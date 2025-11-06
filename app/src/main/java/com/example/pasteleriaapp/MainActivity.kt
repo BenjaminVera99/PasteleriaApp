@@ -65,8 +65,8 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        if (currentRoute in listOf(AppRoute.Home.route, AppRoute.OrderHistory.route, AppRoute.Profile.route)) {
-                            MainBottomBar(navController = navController)
+                        if (currentRoute in listOf(AppRoute.Home.route, AppRoute.Cart.route, AppRoute.OrderHistory.route, AppRoute.Profile.route)) {
+                            MainBottomBar(navController = navController, mainViewModel = mainViewModel)
                         }
                     }
                 ) { innerPadding ->

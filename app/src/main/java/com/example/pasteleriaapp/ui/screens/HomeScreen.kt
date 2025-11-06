@@ -19,7 +19,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,9 +35,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.data.DataSource
 import com.example.pasteleriaapp.model.Product
 import com.example.pasteleriaapp.navigation.AppRoute
+import com.example.pasteleriaapp.ui.theme.Pacifico
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,21 +47,47 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 fun HomeScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        items(DataSource.products) { product ->
-            ProductCard(
-                product = product,
-                onCardClick = { viewModel.navigateTo(AppRoute.Detail(product.id.toString())) },
-                onAddToCartClick = {
-                    viewModel.addToCart(product)
-                    Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
-                }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.milsabores),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Pastelería Mil Sabores",
+                            fontFamily = Pacifico, // Using the custom font
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) // Semi-transparent
+                )
             )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(DataSource.products) { product ->
+                ProductCard(
+                    product = product,
+                    onCardClick = { viewModel.navigateTo(AppRoute.Detail(product.id.toString())) },
+                    onAddToCartClick = {
+                        viewModel.addToCart(product)
+                        Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
         }
     }
 }
