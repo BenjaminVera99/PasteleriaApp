@@ -24,18 +24,33 @@ import java.util.Locale
 
 class MainViewModel : ViewModel() {
 
+    // --- Navegación ---
+    // Canal para enviar eventos de navegación a la UI.
     private val _navEvents = MutableSharedFlow<NavigationEvent>()
     val navEvents = _navEvents.asSharedFlow()
 
+    // --- Estados de la Aplicación ---
+
+    // Estado del carrito de compras.
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
 
+    // Estado del historial de pedidos.
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
+    // Estado de la sesión del usuario.
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
+    // --- Estados Derivados (calculados a partir de otros estados) ---
+
+    // Calcula la cantidad total de artículos en el carrito.
+    val cartItemCount: StateFlow<Int> = _cartItems.map { items ->
+        items.sumOf { it.quantity }
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), 0)
+
+    // Calcula el precio total del carrito.
     val cartTotal: StateFlow<Double> = cartItems.map { items ->
         var total = 0.0
         for (item in items) {
@@ -44,6 +59,8 @@ class MainViewModel : ViewModel() {
         total
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), 0.0)
 
+    // --- Lógica de Sesión ---
+
     fun login() {
         _isLoggedIn.value = true
         navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true)
@@ -51,10 +68,13 @@ class MainViewModel : ViewModel() {
 
     fun logout() {
         _isLoggedIn.value = false
-        _cartItems.value = emptyList()
+        _cartItems.value = emptyList() // Limpiar carrito al cerrar sesión.
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
     }
 
+    // --- Lógica de Pedidos ---
+
+    // Crea un nuevo pedido, lo guarda en el historial y limpia el carrito.
     fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String) {
         val currentCartItems = _cartItems.value
         if (currentCartItems.isNotEmpty()) {
@@ -67,12 +87,13 @@ class MainViewModel : ViewModel() {
                 buyerName = buyerName,
                 buyerEmail = buyerEmail
             )
-            // Add the new order to the beginning of the list
             _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
             _cartItems.value = emptyList()
             navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
         }
     }
+
+    // --- Lógica del Carrito ---
 
     fun addToCart(product: Product) {
         _cartItems.update { currentCart ->
@@ -121,10 +142,12 @@ class MainViewModel : ViewModel() {
                     }
                 }
             } else {
-                currentCart // Do nothing if quantity is 1 or less
+                currentCart
             }
         }
     }
+
+    // --- Funciones de Navegación ---
 
     fun navigateTo(
         appRoute: AppRoute,

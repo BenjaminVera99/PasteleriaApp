@@ -36,14 +36,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Instancias de los ViewModels principales de la app.
         val mainViewModel: MainViewModel by viewModels()
         val usuarioViewModel: UsuarioViewModel by viewModels()
         setContent {
             PasteleriaAppTheme {
+                // Controlador principal de la navegación.
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
+                // Escucha los eventos de navegación que vienen del ViewModel.
                 LaunchedEffect(Unit) {
                     mainViewModel.navEvents.collect { event ->
                         when (event) {
@@ -63,18 +66,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Estructura principal de la UI con la barra de navegación inferior.
                 Scaffold(
                     bottomBar = {
+                        // La barra de navegación solo se muestra en las pantallas principales.
                         if (currentRoute in listOf(AppRoute.Home.route, AppRoute.Cart.route, AppRoute.OrderHistory.route, AppRoute.Profile.route)) {
                             MainBottomBar(navController = navController, mainViewModel = mainViewModel)
                         }
                     }
                 ) { innerPadding ->
+                    // Host que gestiona qué pantalla se muestra.
                     NavHost(
                         navController = navController,
                         startDestination = AppRoute.Welcome.route,
                         modifier = Modifier.padding(innerPadding)
                     ) {
+                        // Definición de todas las rutas y a qué pantalla corresponden.
                         composable(AppRoute.Welcome.route) {
                             WelcomeScreen(mainViewModel = mainViewModel)
                         }
@@ -111,6 +118,7 @@ class MainActivity : ComponentActivity() {
                         composable(AppRoute.OrderHistory.route) {
                             OrderHistoryScreen(mainViewModel = mainViewModel)
                         }
+                        // Ruta con argumento para la pantalla de detalle.
                         composable(
                             route = AppRoute.Detail.routePattern,
                             arguments = listOf(navArgument("itemId") { type = NavType.StringType })

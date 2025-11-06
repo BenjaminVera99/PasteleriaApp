@@ -59,7 +59,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(estado.nombre)
                 OutlinedTextField(
                     value = estado.nombre,
                     onValueChange = usuarioViewModel::onNombreChange,

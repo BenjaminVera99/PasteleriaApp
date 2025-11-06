@@ -10,12 +10,14 @@ import kotlinx.coroutines.flow.update
 
 class UsuarioViewModel: ViewModel() {
 
+    // Estado del formulario de usuario, tanto para registro como para login.
     private val _estado= MutableStateFlow(UsuarioUiState())
     val estado: StateFlow<UsuarioUiState> = _estado
 
-    // In-memory list to store registered users
+    // Base de datos en memoria para los usuarios registrados.
     private val _registeredUsers = mutableListOf<UsuarioUiState>()
 
+    // --- Actualizadores de estado para los campos del formulario ---
     fun onNombreChange(nuevoNombre:String){
         _estado.update { it.copy(nombre = nuevoNombre, errores = it.errores.copy(nombre=null)) }
     }
@@ -35,12 +37,16 @@ class UsuarioViewModel: ViewModel() {
         _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos) }
     }
 
+    // --- Lógica de negocio ---
+
+    // Guarda el estado actual como un nuevo usuario registrado.
     fun registrarUsuario() {
         if (estaValidadoElFormulario()) {
             _registeredUsers.add(_estado.value)
         }
     }
 
+    // Comprueba si el correo y contraseña actuales coinciden con algún usuario registrado.
     fun authenticateUser(): Boolean {
         val loginAttempt = _estado.value
         val user = _registeredUsers.find { 
@@ -49,6 +55,9 @@ class UsuarioViewModel: ViewModel() {
         return user != null
     }
 
+    // --- Validaciones ---
+
+    // Validación completa para el formulario de registro.
     fun estaValidadoElFormulario(): Boolean{
         val formularioActual=_estado.value
         val errores= UsuarioErrores(
@@ -70,6 +79,7 @@ class UsuarioViewModel: ViewModel() {
         return !hayErrores
     }
 
+    // Validación específica para el formulario de login.
     fun estaValidadoElLogin(): Boolean {
         val formularioActual = _estado.value
         val errores = UsuarioErrores(
