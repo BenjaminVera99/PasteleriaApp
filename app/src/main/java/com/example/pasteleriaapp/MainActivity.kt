@@ -70,7 +70,10 @@ class MainActivity : ComponentActivity() {
                         HomeScreen(viewModel = mainViewModel)
                     }
                     composable(AppRoute.Profile.route) {
-                        ProfileScreen(viewModel = mainViewModel)
+                        ProfileScreen(
+                            mainViewModel = mainViewModel, 
+                            usuarioViewModel = usuarioViewModel
+                        )
                     }
                     composable(AppRoute.Cart.route) {
                         CartScreen(mainViewModel = mainViewModel)

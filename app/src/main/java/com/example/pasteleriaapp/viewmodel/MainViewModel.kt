@@ -25,6 +25,9 @@ class MainViewModel : ViewModel() {
 
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
+    
+    private val _isLoggedIn = MutableStateFlow(false)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
     val cartTotal: StateFlow<Double> = cartItems.map { items ->
         var total = 0.0
@@ -34,6 +37,17 @@ class MainViewModel : ViewModel() {
         total
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), 0.0)
 
+    fun login() {
+        _isLoggedIn.value = true
+        navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true)
+    }
+
+    fun logout() {
+        _isLoggedIn.value = false
+        // Clear cart on logout
+        _cartItems.value = emptyList()
+        navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
+    }
 
     fun addToCart(product: Product) {
         _cartItems.update { currentCart ->

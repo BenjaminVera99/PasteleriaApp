@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,6 +31,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,28 +54,49 @@ fun HomeScreen(viewModel: MainViewModel = viewModel()) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("Menu", Modifier.padding(16.dp))
-                NavigationDrawerItem(
-                    label = { Text("Ir al Perfil") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        viewModel.navigateTo(AppRoute.Profile)
-                    }
-                )
-                NavigationDrawerItem(
-                    label = { Text("Registrarse") },
-                    selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        viewModel.navigateTo(AppRoute.Register)
-                    }
-                )
+                Text("Menú", Modifier.padding(16.dp))
+                Divider()
+                if (isLoggedIn) {
+                    NavigationDrawerItem(
+                        label = { Text("Mi Perfil") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            viewModel.navigateTo(AppRoute.Profile)
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Cerrar Sesión") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            viewModel.logout()
+                        }
+                    )
+                } else {
+                    NavigationDrawerItem(
+                        label = { Text("Iniciar Sesión") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            viewModel.navigateTo(AppRoute.Login)
+                        }
+                    )
+                    NavigationDrawerItem(
+                        label = { Text("Registrarse") },
+                        selected = false,
+                        onClick = {
+                            scope.launch { drawerState.close() }
+                            viewModel.navigateTo(AppRoute.Register)
+                        }
+                    )
+                }
             }
         }
     ) {
