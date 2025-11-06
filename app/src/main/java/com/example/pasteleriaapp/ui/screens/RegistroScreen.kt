@@ -128,6 +128,7 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                 Button(
                     onClick = {
                         if (usuarioViewModel.estaValidadoElFormulario() && estado.aceptaTerminos) {
+                            usuarioViewModel.registrarUsuario()
                             mainViewModel.login()
                         }
                     },

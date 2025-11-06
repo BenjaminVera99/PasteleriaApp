@@ -13,6 +13,9 @@ class UsuarioViewModel: ViewModel() {
     private val _estado= MutableStateFlow(UsuarioUiState())
     val estado: StateFlow<UsuarioUiState> = _estado
 
+    // In-memory list to store registered users
+    private val _registeredUsers = mutableListOf<UsuarioUiState>()
+
     fun onNombreChange(nuevoNombre:String){
         _estado.update { it.copy(nombre = nuevoNombre, errores = it.errores.copy(nombre=null)) }
     }
@@ -32,7 +35,20 @@ class UsuarioViewModel: ViewModel() {
         _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos) }
     }
 
-    // Validation for Registration form
+    fun registrarUsuario() {
+        if (estaValidadoElFormulario()) {
+            _registeredUsers.add(_estado.value)
+        }
+    }
+
+    fun authenticateUser(): Boolean {
+        val loginAttempt = _estado.value
+        val user = _registeredUsers.find { 
+            it.correo == loginAttempt.correo && it.contrasena == loginAttempt.contrasena
+        }
+        return user != null
+    }
+
     fun estaValidadoElFormulario(): Boolean{
         val formularioActual=_estado.value
         val errores= UsuarioErrores(
@@ -54,7 +70,6 @@ class UsuarioViewModel: ViewModel() {
         return !hayErrores
     }
 
-    // Validation for Login form
     fun estaValidadoElLogin(): Boolean {
         val formularioActual = _estado.value
         val errores = UsuarioErrores(

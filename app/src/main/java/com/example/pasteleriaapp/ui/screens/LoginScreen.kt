@@ -1,5 +1,6 @@
 package com.example.pasteleriaapp.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -33,6 +35,7 @@ import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 @Composable
 fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
     val userState by usuarioViewModel.estado.collectAsState()
+    val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -80,7 +83,11 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             Button(
                 onClick = { 
                     if (usuarioViewModel.estaValidadoElLogin()) {
-                        mainViewModel.login()
+                        if (usuarioViewModel.authenticateUser()) {
+                            mainViewModel.login()
+                        } else {
+                            Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
