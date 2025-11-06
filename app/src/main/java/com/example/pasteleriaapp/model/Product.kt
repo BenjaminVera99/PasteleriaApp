@@ -1,11 +1,11 @@
-package com.example.pasteleriaapp.model 
+package com.example.pasteleriaapp.model
+
+import androidx.annotation.DrawableRes
 
 data class Product(
     val id: Int,
-    val code: String,
-    val category: String,
     val name: String,
     val price: Int,
-    val img: String,
-    val onSale: Boolean
+    @DrawableRes val imageResId: Int,
+    val description: String
 )

@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
                         CartScreen(mainViewModel = mainViewModel)
                     }
                     composable(
-                        route = AppRoute.Detail("").route,
+                        route = AppRoute.Detail.routePattern, // Corrected to use the route pattern
                         arguments = listOf(navArgument("itemId") { type = NavType.StringType })
                     ) { backStackEntry ->
                         val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
