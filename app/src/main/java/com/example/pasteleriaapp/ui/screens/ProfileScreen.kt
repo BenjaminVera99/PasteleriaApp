@@ -56,6 +56,8 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             ProfileInfoRow(label = "Correo", value = userState.correo)
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Address (editable)
         if (isEditing) {
             OutlinedTextField(
@@ -68,7 +70,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             ProfileInfoRow(label = "Dirección", value = userState.direccion)
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.weight(1f))
 
         Button(
             onClick = { isEditing = !isEditing },

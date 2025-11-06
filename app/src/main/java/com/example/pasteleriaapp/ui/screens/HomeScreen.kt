@@ -17,7 +17,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -60,13 +62,14 @@ fun HomeScreen(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Pastelería Mil Sabores",
-                            fontFamily = Pacifico, // Using the custom font
-                            style = MaterialTheme.typography.headlineSmall
+                            fontFamily = Pacifico,
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) // Semi-transparent
+                    containerColor = Color.Transparent // Fully transparent
                 )
             )
         }
@@ -75,7 +78,7 @@ fun HomeScreen(viewModel: MainViewModel) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(DataSource.products) { product ->
@@ -98,6 +101,10 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCardClick() },
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.6f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -113,12 +120,19 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = product.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(text = product.name, style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "$${product.price}", color = Color.Gray)
+                Text(
+                    text = String.format("$%.0f", product.price.toDouble()),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    fontSize = 16.sp
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Button(onClick = { onAddToCartClick() }) {
+            Button(
+                onClick = { onAddToCartClick() },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
                 Text("Añadir")
             }
         }

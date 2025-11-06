@@ -20,12 +20,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,16 +56,20 @@ fun CartScreen(mainViewModel: MainViewModel) {
     ) {
         Text(
             text = "Mi Carrito",
-            style = typography.headlineLarge,
+            style = MaterialTheme.typography.headlineLarge,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
         if (cartItems.isEmpty()) {
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(text = "El carrito está vacío")
             }
         } else {
-            LazyColumn(modifier = Modifier.weight(1f)) {
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(cartItems) { item ->
                     CartItemRow(
                         item = item,
@@ -83,7 +89,10 @@ fun CartScreen(mainViewModel: MainViewModel) {
             Spacer(modifier = Modifier.padding(8.dp))
             Button(
                 onClick = { mainViewModel.navigateTo(AppRoute.Checkout) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Text("Pagar")
             }
@@ -94,9 +103,11 @@ fun CartScreen(mainViewModel: MainViewModel) {
 @Composable
 fun CartItemRow(item: CartItem, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White.copy(alpha = 0.6f)
+        )
     ) {
         Row(
             modifier = Modifier
@@ -124,7 +135,11 @@ fun CartItemRow(item: CartItem, onIncrease: () -> Unit, onDecrease: () -> Unit, 
                             .background(LocalContentColor.current)
                     )
                 }
-                Text(text = "${item.quantity}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp))
+                Text(
+                    text = "${item.quantity}",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
                 IconButton(onClick = onIncrease) {
                     Icon(Icons.Default.Add, contentDescription = "Añadir uno")
                 }

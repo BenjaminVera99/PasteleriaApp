@@ -19,6 +19,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,6 +42,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
     val cartItems by mainViewModel.cartItems.collectAsState()
     val total by mainViewModel.cartTotal.collectAsState()
     val userState by usuarioViewModel.estado.collectAsState()
+    val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
     val context = LocalContext.current
 
     Scaffold(
@@ -61,9 +63,9 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
                 .padding(innerPadding)
                 .padding(16.dp)
         ) {
-            Text("Resumen del Pedido", style = MaterialTheme.typography.headlineSmall)
+            Text("Resumen del Pedido", style = typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 LazyColumn(modifier = Modifier.padding(16.dp).height(150.dp)) {
                     items(cartItems) { item ->
@@ -74,7 +76,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = String.format("Total: $%.0f", total),
@@ -82,12 +84,12 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
                 fontSize = 20.sp,
                 modifier = Modifier.align(Alignment.End)
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
-            Text("Información de Envío", style = MaterialTheme.typography.headlineSmall)
+
+            Text("Información de Envío", style = typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             OutlinedTextField(
                 value = userState.direccion,
                 onValueChange = usuarioViewModel::onDireccionChange,
@@ -99,7 +101,9 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
 
             Button(
                 onClick = { 
-                    mainViewModel.placeOrder(userState.direccion)
+                    val buyerName = if (isLoggedIn) userState.nombre else "Invitado"
+                    val buyerEmail = if (isLoggedIn) userState.correo else ""
+                    mainViewModel.placeOrder(userState.direccion, buyerName, buyerEmail)
                     Toast.makeText(context, "¡Pedido realizado con éxito!", Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth()

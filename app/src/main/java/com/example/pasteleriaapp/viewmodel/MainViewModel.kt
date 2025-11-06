@@ -55,7 +55,7 @@ class MainViewModel : ViewModel() {
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
     }
 
-    fun placeOrder(shippingAddress: String) {
+    fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String) {
         val currentCartItems = _cartItems.value
         if (currentCartItems.isNotEmpty()) {
             val newOrder = Order(
@@ -63,9 +63,12 @@ class MainViewModel : ViewModel() {
                 items = currentCartItems,
                 totalPrice = cartTotal.value,
                 date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
-                shippingAddress = shippingAddress
+                shippingAddress = shippingAddress,
+                buyerName = buyerName,
+                buyerEmail = buyerEmail
             )
-            _orders.update { currentOrders -> currentOrders + newOrder }
+            // Add the new order to the beginning of the list
+            _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
             _cartItems.value = emptyList()
             navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
         }

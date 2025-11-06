@@ -69,7 +69,11 @@ fun OrderCard(order: Order) {
             Spacer(modifier = Modifier.height(8.dp))
             Divider()
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Enviado a : ${order.shippingAddress}", style = MaterialTheme.typography.bodySmall)
+            Text("Comprador: ${order.buyerName}", style = MaterialTheme.typography.bodySmall)
+            if (order.buyerEmail.isNotEmpty()) {
+                Text("Email: ${order.buyerEmail}", style = MaterialTheme.typography.bodySmall)
+            }
+            Text("Enviado a: ${order.shippingAddress}", style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = String.format("Total: $%.0f", order.totalPrice),

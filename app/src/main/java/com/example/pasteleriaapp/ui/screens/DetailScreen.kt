@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,9 +21,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -38,12 +42,17 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = product?.name ?: "Detalle del Producto") },
+                title = { Text(text = product?.name ?: "Detalle del Producto", style = MaterialTheme.typography.headlineMedium) },
                 navigationIcon = {
                     IconButton(onClick = { mainViewModel.navigateUp() }) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Atrás")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         }
     ) { innerPadding ->
@@ -60,7 +69,8 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
                     contentDescription = product.name,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(250.dp),
+                        .height(250.dp)
+                        .clip(RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -75,9 +85,12 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
                         mainViewModel.addToCart(product)
                         Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-                    Text("Añadir al Carrito ($${product.price})")
+                    Text(String.format("Añadir al Carrito ($%.0f)", product.price.toDouble()))
                 }
             } else {
                 Column(
