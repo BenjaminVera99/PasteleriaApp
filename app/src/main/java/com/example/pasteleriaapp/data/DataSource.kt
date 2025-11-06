@@ -65,7 +65,7 @@ object DataSource {
             id = 9,
             name = "Rollos de canela",
             price = 15000,
-            imageResId = R.drawable.rollosdecanela,
+            imageResId = R.drawable.rollos_de_canela,
             description = "Sabrosos Rollos de canela perfectos para una tarde de sabor inigualable."
         ),
         Product(

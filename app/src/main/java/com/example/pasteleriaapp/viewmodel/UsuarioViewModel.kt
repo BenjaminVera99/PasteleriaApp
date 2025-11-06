@@ -10,16 +10,12 @@ import kotlinx.coroutines.flow.update
 
 class UsuarioViewModel: ViewModel() {
 
-    //declaramos el estado interno mutable
     private val _estado= MutableStateFlow(UsuarioUiState())
-    //expone el estado de manera publica y es de solo lectura
     val estado: StateFlow<UsuarioUiState> = _estado
 
-    //actualiza el campo nombre
     fun onNombreChange(nuevoNombre:String){
         _estado.update { it.copy(nombre = nuevoNombre, errores = it.errores.copy(nombre=null)) }
     }
-    //actualiza el campo correo
     fun onCorreoChange(nuevoCorreo:String){
         _estado.update { it.copy(correo = nuevoCorreo, errores = it.errores.copy(correo =null)) }
     }
@@ -36,10 +32,8 @@ class UsuarioViewModel: ViewModel() {
         _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos) }
     }
 
-    //validacion global del formulario
-
+    // Validation for Registration form
     fun estaValidadoElFormulario(): Boolean{
-        //el estado actual del formulario
         val formularioActual=_estado.value
         val errores= UsuarioErrores(
             nombre = if(formularioActual.nombre.isBlank()) "El campo es obligatorio" else null,
@@ -48,21 +42,38 @@ class UsuarioViewModel: ViewModel() {
             direccion = if(formularioActual.direccion.isBlank()) "El campo es obligatorio" else null,
         )
 
-        //listOfNotNull retorna una lista de los elementos que "no sean nulos"
         val hayErrores=listOfNotNull(
             errores.nombre,
             errores.correo,
             errores.contrasena,
             errores.direccion
-        ).isNotEmpty()//retorna true si la coleccion no esta vacia
+        ).isNotEmpty()
 
         _estado.update { it.copy(errores=errores) }
 
-        return if(hayErrores) false
-        else true
-
-        //return !hayErrores
-
+        return !hayErrores
     }
 
+    // Validation for Login form
+    fun estaValidadoElLogin(): Boolean {
+        val formularioActual = _estado.value
+        val errores = UsuarioErrores(
+            correo = if (!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser válido" else null,
+            contrasena = if (formularioActual.contrasena.isBlank()) "El campo es obligatorio" else null
+        )
+
+        val hayErrores = listOfNotNull(
+            errores.correo,
+            errores.contrasena
+        ).isNotEmpty()
+
+        val erroresActualizados = _estado.value.errores.copy(
+            correo = errores.correo,
+            contrasena = errores.contrasena
+        )
+
+        _estado.update { it.copy(errores = erroresActualizados) }
+
+        return !hayErrores
+    }
 }

@@ -79,7 +79,10 @@ class MainActivity : ComponentActivity() {
                             WelcomeScreen(mainViewModel = mainViewModel)
                         }
                         composable(AppRoute.Login.route) {
-                            LoginScreen(mainViewModel = mainViewModel)
+                            LoginScreen(
+                                mainViewModel = mainViewModel,
+                                usuarioViewModel = usuarioViewModel
+                            )
                         }
                         composable(AppRoute.Register.route) {
                             RegistroScreen(

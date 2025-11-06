@@ -15,13 +15,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -29,11 +28,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.viewmodel.MainViewModel
+import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 
 @Composable
-fun LoginScreen(mainViewModel: MainViewModel) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
+    val userState by usuarioViewModel.estado.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -50,26 +49,39 @@ fun LoginScreen(mainViewModel: MainViewModel) {
             )
             Spacer(modifier = Modifier.height(32.dp))
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = userState.correo,
+                onValueChange = usuarioViewModel::onCorreoChange,
                 label = { Text("Correo Electrónico") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = userState.errores.correo != null,
+                supportingText = {
+                    userState.errores.correo?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(16.dp))
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = userState.contrasena,
+                onValueChange = usuarioViewModel::onContrasenaChange,
                 label = { Text("Contraseña") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true
+                singleLine = true,
+                isError = userState.errores.contrasena != null,
+                supportingText = {
+                    userState.errores.contrasena?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                }
             )
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = { 
-                    // TODO: Add real login validation
-                    mainViewModel.login()
+                    if (usuarioViewModel.estaValidadoElLogin()) {
+                        mainViewModel.login()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
