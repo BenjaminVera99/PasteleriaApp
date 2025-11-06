@@ -46,6 +46,34 @@ object DataSource {
             price = 6000,
             imageResId = R.drawable.donas_glaseadas,
             description = "3 porciones de donas tiernas y esponjosas, cubiertas con un glaseado de azúcar clásico que se derrite en la boca."
+        ),
+        Product(
+            id = 7,
+            name = "Pastel de Zanahoria",
+            price = 28000,
+            imageResId = R.drawable.pastel_zanahoria,
+            description = "Un bizcocho especiado y húmedo con zanahoria rallada y nueces, cubierto con un delicioso frosting de queso crema."
+        ),
+        Product(
+            id = 8,
+            name = "Tiramisú Clásico",
+            price = 32000,
+            imageResId = R.drawable.tiramisu,
+            description = "Capas de bizcochos de soletilla empapados en café y licor, alternadas con una crema suave de mascarpone y cacao en polvo."
+        ),
+        Product(
+            id = 9,
+            name = "Rollos de canela",
+            price = 15000,
+            imageResId = R.drawable.rollosdecanela,
+            description = "Sabrosos Rollos de canela perfectos para una tarde de sabor inigualable."
+        ),
+        Product(
+            id = 10,
+            name = "Tarta Tres Leches",
+            price = 27000,
+            imageResId = R.drawable.tres_leches,
+            description = "Bizcocho esponjoso bañado en una mezcla de tres tipos de leche, cubierto con merengue suave y un toque de canela."
         )
     )
 }
