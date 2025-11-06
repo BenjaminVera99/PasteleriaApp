@@ -44,9 +44,13 @@ class MainViewModel : ViewModel() {
 
     fun logout() {
         _isLoggedIn.value = false
-        // Clear cart on logout
         _cartItems.value = emptyList()
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
+    }
+    
+    fun placeOrder() {
+        _cartItems.value = emptyList()
+        navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
     }
 
     fun addToCart(product: Product) {

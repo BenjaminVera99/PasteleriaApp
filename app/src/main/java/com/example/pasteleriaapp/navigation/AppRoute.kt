@@ -5,6 +5,7 @@ sealed class AppRoute(val route: String) {
     object Login : AppRoute("login")
     object Home : AppRoute("home")
     object Cart : AppRoute("cart")
+    object Checkout : AppRoute("checkout") // Added this line
     object Register : AppRoute("register")
     object Profile : AppRoute("profile")
     object Settings : AppRoute("settings")

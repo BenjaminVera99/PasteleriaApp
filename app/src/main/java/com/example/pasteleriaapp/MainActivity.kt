@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
 import com.example.pasteleriaapp.ui.screens.CartScreen
+import com.example.pasteleriaapp.ui.screens.CheckoutScreen
 import com.example.pasteleriaapp.ui.screens.DetailScreen
 import com.example.pasteleriaapp.ui.screens.HomeScreen
 import com.example.pasteleriaapp.ui.screens.LoginScreen
@@ -77,6 +78,12 @@ class MainActivity : ComponentActivity() {
                     }
                     composable(AppRoute.Cart.route) {
                         CartScreen(mainViewModel = mainViewModel)
+                    }
+                    composable(AppRoute.Checkout.route) {
+                        CheckoutScreen(
+                            mainViewModel = mainViewModel,
+                            usuarioViewModel = usuarioViewModel
+                        )
                     }
                     composable(
                         route = AppRoute.Detail.routePattern, // Corrected to use the route pattern

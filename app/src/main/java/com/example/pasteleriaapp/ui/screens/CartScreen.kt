@@ -1,6 +1,5 @@
 package com.example.pasteleriaapp.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -37,12 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pasteleriaapp.model.CartItem
+import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +49,6 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 fun CartScreen(mainViewModel: MainViewModel) {
     val cartItems by mainViewModel.cartItems.collectAsState()
     val total by mainViewModel.cartTotal.collectAsState()
-    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -94,7 +92,7 @@ fun CartScreen(mainViewModel: MainViewModel) {
                 )
                 Spacer(modifier = Modifier.padding(8.dp))
                 Button(
-                    onClick = { Toast.makeText(context, "Función no implementada", Toast.LENGTH_SHORT).show() },
+                    onClick = { mainViewModel.navigateTo(AppRoute.Checkout) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Pagar")
