@@ -18,6 +18,7 @@ import com.example.pasteleriaapp.ui.screens.CheckoutScreen
 import com.example.pasteleriaapp.ui.screens.DetailScreen
 import com.example.pasteleriaapp.ui.screens.HomeScreen
 import com.example.pasteleriaapp.ui.screens.LoginScreen
+import com.example.pasteleriaapp.ui.screens.OrderHistoryScreen
 import com.example.pasteleriaapp.ui.screens.ProfileScreen
 import com.example.pasteleriaapp.ui.screens.RegistroScreen
 import com.example.pasteleriaapp.ui.screens.WelcomeScreen
@@ -84,6 +85,9 @@ class MainActivity : ComponentActivity() {
                             mainViewModel = mainViewModel,
                             usuarioViewModel = usuarioViewModel
                         )
+                    }
+                    composable(AppRoute.OrderHistory.route) {
+                        OrderHistoryScreen(mainViewModel = mainViewModel)
                     }
                     composable(
                         route = AppRoute.Detail.routePattern, // Corrected to use the route pattern

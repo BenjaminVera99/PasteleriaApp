@@ -110,6 +110,15 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             ) {
                 Text(if (isEditing) "Guardar Cambios" else "Editar Perfil")
             }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = { mainViewModel.navigateTo(AppRoute.OrderHistory) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Mis Pedidos")
+            }
         }
     }
 }

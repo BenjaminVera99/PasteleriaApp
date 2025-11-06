@@ -3,6 +3,7 @@ package com.example.pasteleriaapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pasteleriaapp.model.CartItem
+import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.model.Product
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
@@ -17,6 +18,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainViewModel : ViewModel() {
 
@@ -25,7 +29,10 @@ class MainViewModel : ViewModel() {
 
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
     val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
-    
+
+    private val _orders = MutableStateFlow<List<Order>>(emptyList())
+    val orders: StateFlow<List<Order>> = _orders.asStateFlow()
+
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
@@ -47,10 +54,20 @@ class MainViewModel : ViewModel() {
         _cartItems.value = emptyList()
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
     }
-    
+
     fun placeOrder() {
-        _cartItems.value = emptyList()
-        navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
+        val currentCartItems = _cartItems.value
+        if (currentCartItems.isNotEmpty()) {
+            val newOrder = Order(
+                id = System.currentTimeMillis(),
+                items = currentCartItems,
+                totalPrice = cartTotal.value,
+                date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+            )
+            _orders.update { currentOrders -> currentOrders + newOrder }
+            _cartItems.value = emptyList()
+            navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
+        }
     }
 
     fun addToCart(product: Product) {
@@ -59,7 +76,7 @@ class MainViewModel : ViewModel() {
             if (cartItem == null) {
                 currentCart + CartItem(product)
             } else {
-                currentCart.map { 
+                currentCart.map {
                     if (it.product.id == product.id) {
                         it.copy(quantity = it.quantity + 1)
                     } else {
