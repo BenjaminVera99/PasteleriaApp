@@ -55,14 +55,15 @@ class MainViewModel : ViewModel() {
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
     }
 
-    fun placeOrder() {
+    fun placeOrder(shippingAddress: String) {
         val currentCartItems = _cartItems.value
         if (currentCartItems.isNotEmpty()) {
             val newOrder = Order(
                 id = System.currentTimeMillis(),
                 items = currentCartItems,
                 totalPrice = cartTotal.value,
-                date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+                date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
+                shippingAddress = shippingAddress
             )
             _orders.update { currentOrders -> currentOrders + newOrder }
             _cartItems.value = emptyList()
@@ -76,7 +77,7 @@ class MainViewModel : ViewModel() {
             if (cartItem == null) {
                 currentCart + CartItem(product)
             } else {
-                currentCart.map {
+                currentCart.map { 
                     if (it.product.id == product.id) {
                         it.copy(quantity = it.quantity + 1)
                     } else {

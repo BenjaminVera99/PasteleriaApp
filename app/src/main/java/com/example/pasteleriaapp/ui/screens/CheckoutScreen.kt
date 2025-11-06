@@ -77,7 +77,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
             
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = String.format("Total: $%.2f", total),
+                text = String.format("Total: $%.0f", total),
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 modifier = Modifier.align(Alignment.End)
@@ -99,7 +99,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
 
             Button(
                 onClick = { 
-                    mainViewModel.placeOrder()
+                    mainViewModel.placeOrder(userState.direccion)
                     Toast.makeText(context, "¡Pedido realizado con éxito!", Toast.LENGTH_LONG).show()
                 },
                 modifier = Modifier.fillMaxWidth()

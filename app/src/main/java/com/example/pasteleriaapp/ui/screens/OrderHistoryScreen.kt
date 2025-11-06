@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,37 +24,33 @@ import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderHistoryScreen(mainViewModel: MainViewModel) {
     val orders by mainViewModel.orders.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Mis Pedidos") }
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            if (orders.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = "Aún no has realizado ningún pedido.")
-                }
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    items(orders) { order ->
-                        OrderCard(order = order)
-                    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Mis Pedidos",
+            style = MaterialTheme.typography.headlineLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (orders.isEmpty()) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "Aún no has realizado ningún pedido.")
+            }
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                items(orders) { order ->
+                    OrderCard(order = order)
                 }
             }
         }
@@ -73,8 +67,12 @@ fun OrderCard(order: Order) {
                 Text("${cartItem.quantity}x ${cartItem.product.name}")
             }
             Spacer(modifier = Modifier.height(8.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Enviado a : ${order.shippingAddress}", style = MaterialTheme.typography.bodySmall)
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = String.format("Total: $%.2f", order.totalPrice),
+                text = String.format("Total: $%.0f", order.totalPrice),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.End)
             )

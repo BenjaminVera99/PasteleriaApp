@@ -1,8 +1,9 @@
 package com.example.pasteleriaapp.model
 
 data class Order(
-    val id: Long, // A unique identifier, like a timestamp
+    val id: Long,
     val items: List<CartItem>,
     val totalPrice: Double,
-    val date: String
+    val date: String,
+    val shippingAddress: String
 )

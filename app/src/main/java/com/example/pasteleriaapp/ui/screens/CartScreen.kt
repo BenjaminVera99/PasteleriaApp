@@ -24,6 +24,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -50,6 +52,12 @@ fun CartScreen(mainViewModel: MainViewModel) {
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        Text(
+            text = "Mi Carrito",
+            style = typography.headlineLarge,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
         if (cartItems.isEmpty()) {
             Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "El carrito está vacío")
@@ -67,7 +75,7 @@ fun CartScreen(mainViewModel: MainViewModel) {
             }
             Spacer(modifier = Modifier.padding(8.dp))
             Text(
-                text = String.format("Total: $%.2f", total),
+                text = String.format("Total: $%.0f", total),
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 modifier = Modifier.align(Alignment.End)
