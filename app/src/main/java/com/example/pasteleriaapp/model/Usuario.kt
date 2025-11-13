@@ -10,5 +10,6 @@ data class Usuario(
     val nombre: String,
     val correo: String,
     val contrasena: String, // En una app real, esto debería estar encriptado
-    val direccion: String
+    val direccion: String,
+    val profilePictureUri: String? = null // Nuevo campo para la URI de la foto de perfil
 )

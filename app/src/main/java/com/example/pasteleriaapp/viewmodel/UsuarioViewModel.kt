@@ -1,6 +1,8 @@
 package com.example.pasteleriaapp.viewmodel
 
 import android.app.Application
+import android.content.Context
+import android.net.Uri
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,12 +15,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
 
     private val usuarioRepository: UsuarioRepository
 
-    // Estado del formulario de usuario, tanto para registro como para login.
     private val _estado= MutableStateFlow(UsuarioUiState())
     val estado: StateFlow<UsuarioUiState> = _estado
 
@@ -47,9 +49,17 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos) }
     }
 
+    fun onUserLoaded(usuario: Usuario) {
+        _estado.update { it.copy(
+            nombre = usuario.nombre,
+            correo = usuario.correo,
+            direccion = usuario.direccion,
+            profilePictureUri = usuario.profilePictureUri
+        ) }
+    }
+
     // --- Lógica de negocio ---
 
-    // Guarda el estado actual como un nuevo usuario y lo devuelve
     fun registrarUsuario(onResult: (Usuario?) -> Unit) {
         if (estaValidadoElFormulario()) {
             viewModelScope.launch {
@@ -60,7 +70,6 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     direccion = _estado.value.direccion
                 )
                 usuarioRepository.registrarUsuario(nuevoUsuario)
-                // Busca al usuario recién creado para obtener su ID
                 val usuarioRegistrado = usuarioRepository.findUserByEmail(nuevoUsuario.correo)
                 onResult(usuarioRegistrado)
             }
@@ -69,18 +78,41 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         }
     }
 
-    // Comprueba si el correo y contraseña actuales coinciden con algún usuario en la base de datos.
     fun authenticateUser(onResult: (Usuario?) -> Unit) {
         viewModelScope.launch {
             val loginAttempt = _estado.value
             val usuarioAutenticado = usuarioRepository.autenticarUsuario(loginAttempt.correo, loginAttempt.contrasena)
+            usuarioAutenticado?.let { onUserLoaded(it) }
             onResult(usuarioAutenticado)
         }
     }
 
-    // --- Validaciones ---
+    fun updateProfilePicture(imageUri: Uri, context: Context, onUserUpdated: (Usuario) -> Unit) {
+        viewModelScope.launch {
+            val user = usuarioRepository.findUserByEmail(_estado.value.correo)
+            if (user != null) {
+                // Copia la imagen a un almacenamiento interno y seguro
+                val newUri = saveImageToInternalStorage(imageUri, context, user.id.toString())
 
-    // Validación completa para el formulario de registro.
+                val updatedUser = user.copy(profilePictureUri = newUri.toString())
+                usuarioRepository.updateUser(updatedUser)
+                _estado.update { it.copy(profilePictureUri = newUri.toString()) }
+                onUserUpdated(updatedUser) // Notifica al MainViewModel
+            }
+        }
+    }
+
+    private fun saveImageToInternalStorage(uri: Uri, context: Context, userId: String): Uri {
+        val inputStream = context.contentResolver.openInputStream(uri)
+        val file = File(context.filesDir, "profile_pic_$userId.jpg")
+        val outputStream = file.outputStream()
+        inputStream?.copyTo(outputStream)
+        inputStream?.close()
+        outputStream.close()
+        return Uri.fromFile(file)
+    }
+
+    // --- Validaciones ---
     fun estaValidadoElFormulario(): Boolean{
         val formularioActual=_estado.value
         val errores= UsuarioErrores(
@@ -102,7 +134,6 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         return !hayErrores
     }
 
-    // Validación específica para el formulario de login.
     fun estaValidadoElLogin(): Boolean {
         val formularioActual = _estado.value
         val errores = UsuarioErrores(

@@ -20,4 +20,8 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
     suspend fun findUserByEmail(email: String): Usuario? {
         return usuarioDao.getUserByEmail(email)
     }
+
+    suspend fun updateUser(usuario: Usuario) {
+        usuarioDao.insert(usuario) // Insert con OnConflictStrategy.REPLACE actúa como un update
+    }
 }

@@ -56,6 +56,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Estados de Sesión, Carrito y Pedidos ---
     private val _currentUser = MutableStateFlow<Usuario?>(null)
+    val currentUser: StateFlow<Usuario?> = _currentUser.asStateFlow()
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
@@ -97,6 +98,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loadCartForUser(usuario.id)
         loadOrdersForUser(usuario.id)
         navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true)
+    }
+
+    fun onUserUpdated(updatedUser: Usuario) {
+        _currentUser.value = updatedUser
     }
 
     fun logout() {
