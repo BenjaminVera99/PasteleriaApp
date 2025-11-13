@@ -27,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,8 +39,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.pasteleriaapp.R
-import com.example.pasteleriaapp.data.DataSource
 import com.example.pasteleriaapp.model.Product
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.ui.theme.Pacifico
@@ -48,6 +50,7 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 @Composable
 fun HomeScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val products by viewModel.products.collectAsState()
 
     Scaffold(
         topBar = {
@@ -81,7 +84,7 @@ fun HomeScreen(viewModel: MainViewModel) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(DataSource.products) { product ->
+            items(products) { product ->
                 ProductCard(
                     product = product,
                     onCardClick = { viewModel.navigateTo(AppRoute.Detail(product.id.toString())) },
@@ -110,13 +113,14 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = product.imageResId),
+            AsyncImage(
+                model = product.imageUrl ?: product.imageResId, // Usa la URL si existe, si no, el recurso local
                 contentDescription = product.name,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.milsabores) // Imagen de placeholder mientras carga
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

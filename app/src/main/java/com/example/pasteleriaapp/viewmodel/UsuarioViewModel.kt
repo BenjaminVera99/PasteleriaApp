@@ -1,21 +1,31 @@
 package com.example.pasteleriaapp.viewmodel
 
+import android.app.Application
 import android.util.Patterns
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.pasteleriaapp.data.AppDatabase
+import com.example.pasteleriaapp.data.UsuarioRepository
+import com.example.pasteleriaapp.model.Usuario
 import com.example.pasteleriaapp.model.UsuarioErrores
 import com.example.pasteleriaapp.model.UsuarioUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class UsuarioViewModel: ViewModel() {
+class UsuarioViewModel(application: Application): AndroidViewModel(application) {
+
+    private val usuarioRepository: UsuarioRepository
 
     // Estado del formulario de usuario, tanto para registro como para login.
     private val _estado= MutableStateFlow(UsuarioUiState())
     val estado: StateFlow<UsuarioUiState> = _estado
 
-    // Base de datos en memoria para los usuarios registrados.
-    private val _registeredUsers = mutableListOf<UsuarioUiState>()
+    init {
+        val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
+        usuarioRepository = UsuarioRepository(usuarioDao)
+    }
 
     // --- Actualizadores de estado para los campos del formulario ---
     fun onNombreChange(nuevoNombre:String){
@@ -39,20 +49,28 @@ class UsuarioViewModel: ViewModel() {
 
     // --- Lógica de negocio ---
 
-    // Guarda el estado actual como un nuevo usuario registrado.
+    // Guarda el estado actual como un nuevo usuario registrado en la base de datos.
     fun registrarUsuario() {
         if (estaValidadoElFormulario()) {
-            _registeredUsers.add(_estado.value)
+            viewModelScope.launch {
+                val nuevoUsuario = Usuario(
+                    nombre = _estado.value.nombre,
+                    correo = _estado.value.correo,
+                    contrasena = _estado.value.contrasena,
+                    direccion = _estado.value.direccion
+                )
+                usuarioRepository.registrarUsuario(nuevoUsuario)
+            }
         }
     }
 
-    // Comprueba si el correo y contraseña actuales coinciden con algún usuario registrado.
-    fun authenticateUser(): Boolean {
-        val loginAttempt = _estado.value
-        val user = _registeredUsers.find { 
-            it.correo == loginAttempt.correo && it.contrasena == loginAttempt.contrasena
+    // Comprueba si el correo y contraseña actuales coinciden con algún usuario en la base de datos.
+    fun authenticateUser(onResult: (Usuario?) -> Unit) {
+        viewModelScope.launch {
+            val loginAttempt = _estado.value
+            val usuarioAutenticado = usuarioRepository.autenticarUsuario(loginAttempt.correo, loginAttempt.contrasena)
+            onResult(usuarioAutenticado)
         }
-        return user != null
     }
 
     // --- Validaciones ---

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 
@@ -128,7 +129,12 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     onClick = {
                         if (usuarioViewModel.estaValidadoElFormulario() && estado.aceptaTerminos) {
                             usuarioViewModel.registrarUsuario()
-                            mainViewModel.login()
+                            // Navega a Login y elimina Registro de la pila de navegación
+                            mainViewModel.navigateTo(
+                                appRoute = AppRoute.Login,
+                                popUpRoute = AppRoute.Register,
+                                inclusive = true
+                            )
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

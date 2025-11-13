@@ -1,6 +1,5 @@
 package com.example.pasteleriaapp.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,13 +39,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.pasteleriaapp.model.CartItem
+import coil.compose.AsyncImage
+import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.navigation.AppRoute
+import com.example.pasteleriaapp.ui.model.UiCartItem
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 
 @Composable
 fun CartScreen(mainViewModel: MainViewModel) {
-    val cartItems by mainViewModel.cartItems.collectAsState()
+    val cartItems by mainViewModel.uiCartItems.collectAsState()
     val total by mainViewModel.cartTotal.collectAsState()
 
     Column(
@@ -101,7 +102,7 @@ fun CartScreen(mainViewModel: MainViewModel) {
 }
 
 @Composable
-fun CartItemRow(item: CartItem, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
+fun CartItemRow(item: UiCartItem, onIncrease: () -> Unit, onDecrease: () -> Unit, onRemove: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -115,13 +116,14 @@ fun CartItemRow(item: CartItem, onIncrease: () -> Unit, onDecrease: () -> Unit, 
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = item.product.imageResId),
+            AsyncImage(
+                model = item.product.imageUrl ?: item.product.imageResId,
                 contentDescription = item.product.name,
                 modifier = Modifier
                     .size(60.dp)
                     .clip(CircleShape),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(id = R.drawable.milsabores)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(text = item.product.name, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)

@@ -83,10 +83,12 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             Button(
                 onClick = { 
                     if (usuarioViewModel.estaValidadoElLogin()) {
-                        if (usuarioViewModel.authenticateUser()) {
-                            mainViewModel.login()
-                        } else {
-                            Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+                        usuarioViewModel.authenticateUser { usuario ->
+                            if (usuario != null) {
+                                mainViewModel.login(usuario)
+                            } else {
+                                Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 },

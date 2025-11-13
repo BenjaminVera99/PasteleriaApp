@@ -1,8 +1,8 @@
 package com.example.pasteleriaapp.ui.components
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
@@ -26,7 +26,7 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 sealed class BottomNavItem(val route: String, val icon: ImageVector, val label: String) {
     object Home : BottomNavItem(AppRoute.Home.route, Icons.Default.Home, "Catálogo")
     object Cart : BottomNavItem(AppRoute.Cart.route, Icons.Default.ShoppingCart, "Carrito")
-    object OrderHistory : BottomNavItem(AppRoute.OrderHistory.route, Icons.Default.List, "Mis Pedidos")
+    object OrderHistory : BottomNavItem(AppRoute.OrderHistory.route, Icons.AutoMirrored.Filled.List, "Mis Pedidos")
     object Profile : BottomNavItem(AppRoute.Profile.route, Icons.Default.Person, "Mi Perfil")
 }
 

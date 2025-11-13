@@ -1,7 +1,6 @@
 package com.example.pasteleriaapp.ui.screens
 
 import android.widget.Toast
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +22,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,13 +31,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.pasteleriaapp.data.DataSource
+import coil.compose.AsyncImage
+import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
-    val product = DataSource.products.find { it.id == itemId.toIntOrNull() }
+    val products by mainViewModel.products.collectAsState()
+    // Buscamos el producto en la lista del ViewModel
+    val product = products.find { it.id == itemId.toIntOrNull() }
     val context = LocalContext.current
 
     Scaffold(
@@ -64,14 +68,15 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (product != null) {
-                Image(
-                    painter = painterResource(id = product.imageResId),
+                AsyncImage(
+                    model = product.imageUrl ?: product.imageResId,
                     contentDescription = product.name,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(250.dp)
                         .clip(RoundedCornerShape(12.dp)),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    placeholder = painterResource(id = R.drawable.milsabores)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(

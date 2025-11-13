@@ -39,7 +39,7 @@ import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
-    val cartItems by mainViewModel.cartItems.collectAsState()
+    val cartItems by mainViewModel.uiCartItems.collectAsState()
     val total by mainViewModel.cartTotal.collectAsState()
     val userState by usuarioViewModel.estado.collectAsState()
     val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()

@@ -30,15 +30,17 @@ import com.example.pasteleriaapp.ui.screens.RegistroScreen
 import com.example.pasteleriaapp.ui.screens.WelcomeScreen
 import com.example.pasteleriaapp.ui.theme.PasteleriaAppTheme
 import com.example.pasteleriaapp.viewmodel.MainViewModel
+import com.example.pasteleriaapp.viewmodel.MainViewModelFactory
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
+import com.example.pasteleriaapp.viewmodel.UsuarioViewModelFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Instancias de los ViewModels principales de la app.
-        val mainViewModel: MainViewModel by viewModels()
-        val usuarioViewModel: UsuarioViewModel by viewModels()
+        val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
+        val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
         setContent {
             PasteleriaAppTheme {
                 // Controlador principal de la navegación.
