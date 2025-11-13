@@ -3,27 +3,20 @@ package com.example.pasteleriaapp.ui.screens
 import android.Manifest
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -37,21 +30,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import coil.compose.AsyncImage
+import com.example.pasteleriaapp.ui.components.ImagenInteligente
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
     val userState by usuarioViewModel.estado.collectAsState()
@@ -60,21 +48,21 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
     var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Carga los datos del usuario del MainViewModel al UsuarioViewModel cuando la pantalla se muestra o los datos cambian
+    // Carga los datos del usuario actual en el ViewModel del perfil
     LaunchedEffect(currentUser) {
         currentUser?.let { usuarioViewModel.onUserLoaded(it) }
     }
 
-    // --- Lanzadores para la cámara y la galería ---
+    // --- Lanzadores de Contenido (Galería y Cámara) ---
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
             if (success) {
-                tempImageUri?.let { uri ->
-                    usuarioViewModel.updateProfilePicture(uri, context) {
-                        mainViewModel.onUserUpdated(it) // Sincroniza con MainViewModel
+                tempImageUri?.let {
+                    usuarioViewModel.updateProfilePicture(it) { updatedUser ->
+                        mainViewModel.onUserUpdated(updatedUser)
                     }
                 }
             }
@@ -82,20 +70,40 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
     )
 
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
+        contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri: Uri? ->
             uri?.let {
-                usuarioViewModel.updateProfilePicture(it, context) {
-                    mainViewModel.onUserUpdated(it) // Sincroniza con MainViewModel
+                val flag = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                context.contentResolver.takePersistableUriPermission(it, flag)
+                usuarioViewModel.updateProfilePicture(it) { updatedUser ->
+                    mainViewModel.onUserUpdated(updatedUser)
                 }
             }
         }
     )
 
-    // --- Permisos ---
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
-    val galleryPermissionState = rememberPermissionState(Manifest.permission.READ_MEDIA_IMAGES)
+    // --- Lanzadores de Permisos ---
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                val uri = createImageUri(context)
+                tempImageUri = uri
+                cameraLauncher.launch(uri)
+            }
+        }
+    )
 
+    val galleryPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                galleryLauncher.launch(arrayOf("image/*"))
+            }
+        }
+    )
+
+    // --- Diálogo para elegir foto ---
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -103,13 +111,14 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             text = { Text("Elige una opción para tu foto de perfil.") },
             confirmButton = {
                 TextButton(onClick = {
-                    if (cameraPermissionState.status.isGranted) {
+                    showDialog = false
+                    val permission = Manifest.permission.CAMERA
+                    if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                         val uri = createImageUri(context)
                         tempImageUri = uri
                         cameraLauncher.launch(uri)
-                        showDialog = false
                     } else {
-                        cameraPermissionState.launchPermissionRequest()
+                        cameraPermissionLauncher.launch(permission)
                     }
                 }) {
                     Text("Tomar foto")
@@ -117,11 +126,16 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             },
             dismissButton = {
                 TextButton(onClick = {
-                    if (galleryPermissionState.status.isGranted) {
-                        galleryLauncher.launch("image/*")
-                        showDialog = false
+                    showDialog = false
+                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Manifest.permission.READ_MEDIA_IMAGES
                     } else {
-                        galleryPermissionState.launchPermissionRequest()
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    }
+                    if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        galleryLauncher.launch(arrayOf("image/*"))
+                    } else {
+                        galleryPermissionLauncher.launch(permission)
                     }
                 }) {
                     Text("Elegir de la galería")
@@ -130,6 +144,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         )
     }
 
+    // --- UI de la Pantalla ---
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -140,38 +155,16 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         Text("Mi Perfil", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 32.dp))
         Spacer(modifier = Modifier.height(24.dp))
 
-        // --- Foto de Perfil ---
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { showDialog = true },
-            contentAlignment = Alignment.Center
-        ) {
-            if (userState.profilePictureUri != null) {
-                AsyncImage(
-                    model = Uri.parse(userState.profilePictureUri),
-                    contentDescription = "Foto de perfil",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Añadir foto de perfil",
-                    modifier = Modifier.size(72.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(32.dp))
+        ImagenInteligente(
+            imageUri = userState.profilePictureUri,
+            size = 150.dp,
+            modifier = Modifier.clickable { showDialog = true } 
+        )
 
-        // Name (read-only)
+        Spacer(modifier = Modifier.height(32.dp))
+        
         ProfileInfoRow(label = "Nombre", value = userState.nombre)
 
-        // Email (editable)
         if (isEditing) {
             OutlinedTextField(
                 value = userState.correo,
@@ -185,7 +178,6 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Address (editable)
         if (isEditing) {
             OutlinedTextField(
                 value = userState.direccion,
@@ -221,7 +213,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
 }
 
 @Composable
-fun ProfileInfoRow(label: String, value: String) {
+private fun ProfileInfoRow(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(text = label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
         Text(text = value, style = MaterialTheme.typography.bodyLarge)
@@ -230,7 +222,7 @@ fun ProfileInfoRow(label: String, value: String) {
 
 private fun createImageUri(context: Context): Uri {
     val imageFile = File.createTempFile(
-        "profile_pic_temp", ".jpg", context.cacheDir
+        "profile_pic_temp_", ".jpg", context.cacheDir
     )
     return FileProvider.getUriForFile(
         context,

@@ -1,7 +1,6 @@
 package com.example.pasteleriaapp.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
@@ -15,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
 
@@ -87,29 +85,16 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         }
     }
 
-    fun updateProfilePicture(imageUri: Uri, context: Context, onUserUpdated: (Usuario) -> Unit) {
+    fun updateProfilePicture(imageUri: Uri, onUserUpdated: (Usuario) -> Unit) {
         viewModelScope.launch {
             val user = usuarioRepository.findUserByEmail(_estado.value.correo)
             if (user != null) {
-                // Copia la imagen a un almacenamiento interno y seguro
-                val newUri = saveImageToInternalStorage(imageUri, context, user.id.toString())
-
-                val updatedUser = user.copy(profilePictureUri = newUri.toString())
+                val updatedUser = user.copy(profilePictureUri = imageUri.toString())
                 usuarioRepository.updateUser(updatedUser)
-                _estado.update { it.copy(profilePictureUri = newUri.toString()) }
+                _estado.update { it.copy(profilePictureUri = imageUri.toString()) }
                 onUserUpdated(updatedUser) // Notifica al MainViewModel
             }
         }
-    }
-
-    private fun saveImageToInternalStorage(uri: Uri, context: Context, userId: String): Uri {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val file = File(context.filesDir, "profile_pic_$userId.jpg")
-        val outputStream = file.outputStream()
-        inputStream?.copyTo(outputStream)
-        inputStream?.close()
-        outputStream.close()
-        return Uri.fromFile(file)
     }
 
     // --- Validaciones ---
