@@ -1,6 +1,7 @@
 package com.example.pasteleriaapp.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
 
@@ -44,7 +46,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     }
 
     fun onAceptarTerminosChange(nuevoAceptarTerminos: Boolean){
-        _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos) }
+        _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos, errores = it.errores.copy(terminos = null)) }
     }
 
     fun onUserLoaded(usuario: Usuario) {
@@ -105,13 +107,15 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
             correo = if(!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser valido" else null,
             contrasena= if(formularioActual.contrasena.length <6)"La contraseña debe tener al menos 6 caracteres" else null,
             direccion = if(formularioActual.direccion.isBlank()) "El campo es obligatorio" else null,
+            terminos = if(!formularioActual.aceptaTerminos) "Debes aceptar los términos" else null
         )
 
         val hayErrores=listOfNotNull(
             errores.nombre,
             errores.correo,
             errores.contrasena,
-            errores.direccion
+            errores.direccion,
+            errores.terminos
         ).isNotEmpty()
 
         _estado.update { it.copy(errores=errores) }

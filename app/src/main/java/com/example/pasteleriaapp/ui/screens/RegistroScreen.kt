@@ -115,22 +115,30 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = estado.aceptaTerminos,
-                        onCheckedChange = usuarioViewModel::onAceptarTerminosChange
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Acepto los términos y condiciones")
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = estado.aceptaTerminos,
+                            onCheckedChange = usuarioViewModel::onAceptarTerminosChange
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text("Acepto los términos y condiciones")
+                    }
+                    estado.errores.terminos?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 16.dp)
+                        )
+                    }
                 }
 
                 Button(
                     onClick = {
-                        if (estado.aceptaTerminos) {
-                            usuarioViewModel.registrarUsuario { usuarioRegistrado ->
-                                if (usuarioRegistrado != null) {
-                                    mainViewModel.login(usuarioRegistrado)
-                                }
+                        usuarioViewModel.registrarUsuario { usuarioRegistrado ->
+                            if (usuarioRegistrado != null) {
+                                mainViewModel.login(usuarioRegistrado)
                             }
                         }
                     },
