@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.pasteleriaapp.data.AppDatabase
 import com.example.pasteleriaapp.data.CartRepository
+import com.example.pasteleriaapp.data.OrderRepository
 import com.example.pasteleriaapp.data.ProductoRepository
 import com.example.pasteleriaapp.model.CartItem
 import com.example.pasteleriaapp.model.Order
@@ -15,6 +16,7 @@ import com.example.pasteleriaapp.navigation.NavigationEvent
 import com.example.pasteleriaapp.ui.model.UiCartItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -34,158 +37,166 @@ import java.util.Locale
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    // --- Inicialización de Repositorios ---
+    // --- Repositorios ---
     private val database = AppDatabase.getDatabase(application)
     private val productoRepository = ProductoRepository(application)
     private val cartRepository = CartRepository(database.cartDao())
+    private val orderRepository = OrderRepository(database.orderDao())
 
-    // --- Estados de la UI (Flujos de datos) ---
+    // --- Trabajos de Corutinas para gestionar suscripciones ---
+    private var cartJob: Job? = null
+    private var ordersJob: Job? = null
 
-    // Estado para la lista de productos
+    // --- Estados de la UI ---
     val products: StateFlow<List<Product>> = productoRepository.products.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
-    // Estado del carrito de la base de datos (privado)
-    private val _dbCartItems = MutableStateFlow<List<CartItem>>(emptyList())
-
-    // Estado del carrito para la UI (combina productos y datos del carrito)
-    val uiCartItems: StateFlow<List<UiCartItem>> = products.combine(_dbCartItems) { productList, cartItems ->
-        cartItems.mapNotNull { cartItem ->
-            productList.find { it.id == cartItem.productId }?.let {
-                UiCartItem(product = it, quantity = cartItem.quantity)
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    // Estado para el total del carrito, derivado del carrito de la UI
-    val cartTotal: StateFlow<Double> = uiCartItems.map { uiItems ->
-        uiItems.sumOf { it.product.price * it.quantity }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
-
-    // Estado para el contador de items en el carrito
-    val cartItemCount: StateFlow<Int> = _dbCartItems.map { items ->
-        items.sumOf { it.quantity }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
-
-    // --- Otros Estados ---
+    // --- Estados de Sesión, Carrito y Pedidos ---
     private val _currentUser = MutableStateFlow<Usuario?>(null)
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
+
+    private val _dbCartItems = MutableStateFlow<List<CartItem>>(emptyList())
+    private val _guestCartItems = MutableStateFlow<List<UiCartItem>>(emptyList())
+
+    val uiCartItems: StateFlow<List<UiCartItem>> = _isLoggedIn.flatMapLatest { loggedIn ->
+        if (loggedIn) {
+            products.combine(_dbCartItems) { productList, dbItems ->
+                dbItems.mapNotNull { dbItem ->
+                    productList.find { it.id == dbItem.productId }?.let {
+                        UiCartItem(product = it, quantity = dbItem.quantity)
+                    }
+                }
+            }
+        } else {
+            _guestCartItems
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val cartItemCount: StateFlow<Int> = uiCartItems.map { it.sumOf { item -> item.quantity } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val cartTotal: StateFlow<Double> = uiCartItems.map { items ->
+        items.sumOf { it.product.price * it.quantity }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
+
     private val _navEvents = MutableSharedFlow<NavigationEvent>()
     val navEvents = _navEvents.asSharedFlow()
 
     // --- Lógica de Sesión ---
-
     fun login(usuario: Usuario) {
         _currentUser.value = usuario
         _isLoggedIn.value = true
+        _guestCartItems.value = emptyList() // El carrito de invitado se descarta
         loadCartForUser(usuario.id)
+        loadOrdersForUser(usuario.id)
         navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true)
     }
 
     fun logout() {
+        // 1. Cancela las suscripciones de datos del usuario anterior.
+        cartJob?.cancel()
+        ordersJob?.cancel()
+        
+        // 2. Limpia todos los estados relacionados con la sesión.
         _currentUser.value = null
         _isLoggedIn.value = false
-        _dbCartItems.value = emptyList() // Limpiar carrito al cerrar sesión.
+        _dbCartItems.value = emptyList()
+        _orders.value = emptyList()
+        _guestCartItems.value = emptyList() // Asegura que el carrito de invitado también se limpie.
+
+        // 3. Navega a la pantalla de bienvenida.
         navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
     }
 
     private fun loadCartForUser(userId: Int) {
-        cartRepository.getCartForUser(userId)
-            .onEach { items -> _dbCartItems.value = items }
+        cartJob?.cancel()
+        cartJob = cartRepository.getCartForUser(userId)
+            .onEach { _dbCartItems.value = it }
+            .launchIn(viewModelScope)
+    }
+
+    private fun loadOrdersForUser(userId: Int) {
+        ordersJob?.cancel()
+        ordersJob = orderRepository.getOrdersForUser(userId)
+            .onEach { _orders.value = it }
             .launchIn(viewModelScope)
     }
 
     // --- Lógica de Pedidos ---
-
     fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String) {
-        val currentCartItems = uiCartItems.value
-        if (currentCartItems.isNotEmpty()) {
+        val currentCart = uiCartItems.value
+        if (currentCart.isNotEmpty()) {
             val newOrder = Order(
-                id = System.currentTimeMillis(),
-                items = currentCartItems,
+                userId = _currentUser.value?.id, // Null si es invitado
+                items = currentCart,
                 totalPrice = cartTotal.value,
                 date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
                 shippingAddress = shippingAddress,
                 buyerName = buyerName,
                 buyerEmail = buyerEmail
             )
-            _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
-            // Limpiar el carrito de la base de datos
-            _currentUser.value?.id?.let {
-                viewModelScope.launch {
-                    cartRepository.clearCart(it)
-                }
+            viewModelScope.launch { orderRepository.placeOrder(newOrder) }
+            
+            if (_isLoggedIn.value) {
+                _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.clearCart(it) } }
+            } else {
+                _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
+                _guestCartItems.value = emptyList()
             }
             navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
         }
     }
 
-    // --- Lógica del Carrito (Ahora usa el Repositorio) ---
-
+    // --- Lógica del Carrito (para Invitados y Usuarios) ---
     fun addToCart(product: Product) {
-        _currentUser.value?.id?.let { userId ->
-            viewModelScope.launch {
-                cartRepository.addToCart(userId, product.id)
+        if (_isLoggedIn.value) {
+            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.addToCart(it, product.id) } }
+        } else {
+            _guestCartItems.update { cart ->
+                val existing = cart.find { it.product.id == product.id }
+                if (existing == null) cart + UiCartItem(product, 1) else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
             }
         }
     }
 
     fun removeFromCart(productId: Int) {
-        _currentUser.value?.id?.let { userId ->
-            viewModelScope.launch {
-                cartRepository.removeFromCart(userId, productId)
-            }
+        if (_isLoggedIn.value) {
+            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.removeFromCart(it, productId) } }
+        } else {
+            _guestCartItems.update { cart -> cart.filterNot { it.product.id == productId } }
         }
     }
 
     fun increaseCartItem(productId: Int) {
-        _currentUser.value?.id?.let { userId ->
-            viewModelScope.launch {
-                cartRepository.increaseQuantity(userId, productId)
-            }
+        if (_isLoggedIn.value) {
+            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.increaseQuantity(it, productId) } }
+        } else {
+            _guestCartItems.update { cart -> cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity + 1) else it } }
         }
     }
 
     fun decreaseCartItem(productId: Int) {
-        _currentUser.value?.id?.let { userId ->
-            viewModelScope.launch {
-                cartRepository.decreaseQuantity(userId, productId)
+        if (_isLoggedIn.value) {
+            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.decreaseQuantity(it, productId) } }
+        } else {
+            _guestCartItems.update { cart ->
+                val item = cart.find { it.product.id == productId }
+                if (item != null && item.quantity > 1) cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity - 1) else it } else cart
             }
         }
     }
 
     // --- Funciones de Navegación ---
-
-    fun navigateTo(
-        appRoute: AppRoute,
-        popUpRoute: AppRoute? = null,
-        inclusive: Boolean = false,
-        singleTop: Boolean = false
-    ) {
-        CoroutineScope(Dispatchers.Main).launch {
-            _navEvents.emit(NavigationEvent.NavigateTo(appRoute, popUpRoute, inclusive, singleTop))
-        }
+    fun navigateTo(appRoute: AppRoute, popUpRoute: AppRoute? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
+        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(appRoute, popUpRoute, inclusive, singleTop)) }
     }
-
-    fun navigateBack() {
-        CoroutineScope(Dispatchers.Main).launch {
-            _navEvents.emit(NavigationEvent.PopBackStack)
-        }
-    }
-
-    fun navigateUp() {
-        CoroutineScope(Dispatchers.Main).launch {
-            _navEvents.emit(NavigationEvent.NavigateUp)
-        }
-    }
+    fun navigateBack() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.PopBackStack) } }
+    fun navigateUp() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateUp) } }
 }

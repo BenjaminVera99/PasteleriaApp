@@ -49,8 +49,8 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
     // --- Lógica de negocio ---
 
-    // Guarda el estado actual como un nuevo usuario registrado en la base de datos.
-    fun registrarUsuario() {
+    // Guarda el estado actual como un nuevo usuario y lo devuelve
+    fun registrarUsuario(onResult: (Usuario?) -> Unit) {
         if (estaValidadoElFormulario()) {
             viewModelScope.launch {
                 val nuevoUsuario = Usuario(
@@ -60,7 +60,12 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     direccion = _estado.value.direccion
                 )
                 usuarioRepository.registrarUsuario(nuevoUsuario)
+                // Busca al usuario recién creado para obtener su ID
+                val usuarioRegistrado = usuarioRepository.findUserByEmail(nuevoUsuario.correo)
+                onResult(usuarioRegistrado)
             }
+        } else {
+            onResult(null)
         }
     }
 

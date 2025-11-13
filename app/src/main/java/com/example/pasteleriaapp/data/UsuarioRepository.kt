@@ -16,4 +16,8 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
         }
         return null
     }
+
+    suspend fun findUserByEmail(email: String): Usuario? {
+        return usuarioDao.getUserByEmail(email)
+    }
 }
