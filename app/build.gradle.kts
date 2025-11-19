@@ -68,6 +68,9 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.3")
     kapt("androidx.room:room-compiler:2.8.3")
 
+    // Konfetti
+    implementation("nl.dionsegijn:konfetti-compose:2.0.5")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

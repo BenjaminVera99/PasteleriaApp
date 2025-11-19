@@ -67,7 +67,7 @@ fun MainBottomBar(navController: NavController, mainViewModel: MainViewModel) {
                 alwaysShowLabel = false, // Only show label for selected item
                 onClick = {
                     if (item.route == AppRoute.Profile.route && !isLoggedIn) {
-                        mainViewModel.navigateTo(AppRoute.Welcome)
+                        mainViewModel.navigateTo(AppRoute.Welcome.route)
                     } else {
                         navController.navigate(item.route) {
                             navController.graph.startDestinationRoute?.let {

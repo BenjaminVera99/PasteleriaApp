@@ -44,21 +44,21 @@ fun WelcomeScreen(mainViewModel: MainViewModel) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Button(
-            onClick = { mainViewModel.navigateTo(AppRoute.Login) },
+            onClick = { mainViewModel.navigateTo(AppRoute.Login.route) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Iniciar Sesión")
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            onClick = { mainViewModel.navigateTo(AppRoute.Register) },
+            onClick = { mainViewModel.navigateTo(AppRoute.Register.route) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Registrarse")
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            onClick = { mainViewModel.navigateTo(AppRoute.Home, popUpTo = AppRoute.Welcome, inclusive = true) },
+            onClick = { mainViewModel.navigateTo(AppRoute.Home.route, popUpTo = AppRoute.Welcome.route, inclusive = true) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Iniciar como invitado")

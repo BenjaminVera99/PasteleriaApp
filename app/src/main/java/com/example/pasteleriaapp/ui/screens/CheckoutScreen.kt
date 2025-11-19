@@ -27,16 +27,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.pasteleriaapp.util.formatPrice
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
-import java.text.NumberFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +48,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
     val userState by usuarioViewModel.estado.collectAsState()
     val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
     val context = LocalContext.current
+    var hasValidationError by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -94,19 +97,34 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
 
             OutlinedTextField(
                 value = userState.direccion,
-                onValueChange = usuarioViewModel::onDireccionChange,
+                onValueChange = {
+                    usuarioViewModel.onDireccionChange(it)
+                    hasValidationError = false // Limpia el error al empezar a escribir
+                },
                 label = { Text("Dirección de Envío") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                isError = hasValidationError && userState.direccion.isBlank(),
+                supportingText = {
+                    if (hasValidationError && userState.direccion.isBlank()) {
+                        Text("La dirección de envío es obligatoria", color = MaterialTheme.colorScheme.error)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
             Button(
                 onClick = { 
-                    val buyerName = if (isLoggedIn) userState.nombre else "Invitado"
-                    val buyerEmail = if (isLoggedIn) userState.correo else ""
-                    mainViewModel.placeOrder(userState.direccion, buyerName, buyerEmail)
-                    Toast.makeText(context, "¡Pedido realizado con éxito!", Toast.LENGTH_LONG).show()
+                    if (userState.direccion.isBlank()) {
+                        hasValidationError = true
+                    } else {
+                        val buyerName = if (isLoggedIn) userState.nombre else "Invitado"
+                        val buyerEmail = if (isLoggedIn) userState.correo else ""
+                        val success = mainViewModel.placeOrder(userState.direccion, buyerName, buyerEmail)
+                        if (success) {
+                            Toast.makeText(context, "¡Pedido realizado con éxito!", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -114,10 +132,4 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
             }
         }
     }
-}
-
-private fun formatPrice(price: Double): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
-    format.maximumFractionDigits = 0
-    return format.format(price).replace("COP", "$").trim()
 }

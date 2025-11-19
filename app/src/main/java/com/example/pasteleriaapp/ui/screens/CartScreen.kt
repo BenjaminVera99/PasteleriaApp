@@ -43,9 +43,8 @@ import coil.compose.AsyncImage
 import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.ui.model.UiCartItem
+import com.example.pasteleriaapp.util.formatPrice
 import com.example.pasteleriaapp.viewmodel.MainViewModel
-import java.text.NumberFormat
-import java.util.Locale
 
 @Composable
 fun CartScreen(mainViewModel: MainViewModel) {
@@ -91,7 +90,7 @@ fun CartScreen(mainViewModel: MainViewModel) {
             )
             Spacer(modifier = Modifier.padding(8.dp))
             Button(
-                onClick = { mainViewModel.navigateTo(AppRoute.Checkout) },
+                onClick = { mainViewModel.navigateTo(AppRoute.Checkout.route) },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary
@@ -153,10 +152,4 @@ fun CartItemRow(item: UiCartItem, onIncrease: () -> Unit, onDecrease: () -> Unit
             }
         }
     }
-}
-
-private fun formatPrice(price: Double): String {
-    val format = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
-    format.maximumFractionDigits = 0
-    return format.format(price).replace("COP", "$").trim()
 }

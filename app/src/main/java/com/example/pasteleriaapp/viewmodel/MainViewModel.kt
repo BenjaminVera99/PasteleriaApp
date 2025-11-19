@@ -35,6 +35,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+sealed class UiEvent {
+    data class ShowSnackbar(val message: String) : UiEvent()
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Repositorios ---
@@ -43,7 +47,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val cartRepository = CartRepository(database.cartDao())
     private val orderRepository = OrderRepository(database.orderDao())
 
-    // --- Trabajos de Corutinas para gestionar suscripciones ---
+    // --- Trabajos de Corutinas ---
     private var cartJob: Job? = null
     private var ordersJob: Job? = null
 
@@ -88,17 +92,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
+    // --- Eventos de Navegación y UI ---
     private val _navEvents = MutableSharedFlow<NavigationEvent>()
     val navEvents = _navEvents.asSharedFlow()
+    private val _uiEvents = MutableSharedFlow<UiEvent>()
+    val uiEvents = _uiEvents.asSharedFlow()
 
     // --- Lógica de Sesión ---
     fun login(usuario: Usuario) {
         _currentUser.value = usuario
         _isLoggedIn.value = true
-        _guestCartItems.value = emptyList() // El carrito de invitado se descarta
+        _guestCartItems.value = emptyList()
         loadCartForUser(usuario.id)
         loadOrdersForUser(usuario.id)
-        navigateTo(AppRoute.Home, popUpTo = AppRoute.Welcome, inclusive = true)
+        navigateTo(AppRoute.Home.route, popUpTo = AppRoute.Welcome.route, inclusive = true)
     }
 
     fun onUserUpdated(updatedUser: Usuario) {
@@ -113,7 +120,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _dbCartItems.value = emptyList()
         _orders.value = emptyList()
         _guestCartItems.value = emptyList()
-        navigateTo(AppRoute.Welcome, popUpTo = AppRoute.Home, inclusive = true)
+        navigateTo(AppRoute.Welcome.route, popUpTo = AppRoute.Home.route, inclusive = true)
     }
 
     private fun loadCartForUser(userId: Int) {
@@ -131,7 +138,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- Lógica de Pedidos ---
-    fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String) {
+    fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String): Boolean {
+        if (shippingAddress.isBlank()) {
+            return false
+        }
+
         val currentCart = uiCartItems.value
         if (currentCart.isNotEmpty()) {
             val newOrder = Order(
@@ -151,12 +162,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
                 _guestCartItems.value = emptyList()
             }
-            navigateTo(AppRoute.Home, popUpTo = AppRoute.Cart, inclusive = true)
+            navigateTo(AppRoute.OrderConfirmation.route, popUpTo = AppRoute.Checkout.route, inclusive = true)
+            return true
+        } else {
+            return false
         }
     }
 
     // --- Lógica del Carrito ---
     fun addToCart(product: Product) {
+        viewModelScope.launch {
+            _uiEvents.emit(UiEvent.ShowSnackbar("${product.name} añadido al carrito"))
+        }
+        
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.addToCart(it, product.id) } }
         } else {
@@ -195,8 +213,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- Funciones de Navegación ---
-    fun navigateTo(appRoute: AppRoute, popUpTo: AppRoute? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
-        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(appRoute, popUpTo, inclusive, singleTop)) }
+    fun navigateTo(route: String, popUpTo: String? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
+        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(route, popUpTo, inclusive, singleTop)) }
     }
     fun navigateBack() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.PopBackStack) } }
     fun navigateUp() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateUp) } }
