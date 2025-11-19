@@ -45,6 +45,8 @@ import com.example.pasteleriaapp.model.Product
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.ui.theme.Pacifico
 import com.example.pasteleriaapp.viewmodel.MainViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +129,7 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
                 Text(text = product.name, style = MaterialTheme.typography.titleLarge)
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = String.format("$%.0f", product.price.toDouble()),
+                    text = formatPrice(product.price),
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     fontSize = 16.sp
                 )
@@ -141,4 +143,10 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
             }
         }
     }
+}
+
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
+    format.maximumFractionDigits = 0
+    return format.format(price).replace("COP", "$").trim()
 }

@@ -15,7 +15,7 @@ import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.model.Product
 import com.example.pasteleriaapp.model.Usuario
 
-@Database(entities = [Product::class, Usuario::class, CartItem::class, Order::class], version = 6, exportSchema = false)
+@Database(entities = [Product::class, Usuario::class, CartItem::class, Order::class], version = 7, exportSchema = false)
 @TypeConverters(OrderItemsConverter::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -35,7 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "pasteleria_database"
                 )
-                .fallbackToDestructiveMigration() // Usamos esto para la simplicidad de la migración
+                .fallbackToDestructiveMigration() // OJO: Solo para desarrollo
                 .build()
                 INSTANCE = instance
                 instance
