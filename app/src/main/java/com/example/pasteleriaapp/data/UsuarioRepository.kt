@@ -22,6 +22,10 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
     }
 
     suspend fun updateUser(usuario: Usuario) {
-        usuarioDao.insert(usuario) // Insert con OnConflictStrategy.REPLACE actúa como un update
+        usuarioDao.update(usuario)
+    }
+
+    suspend fun deleteUserByEmail(email: String) {
+        usuarioDao.deleteByEmail(email)
     }
 }

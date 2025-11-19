@@ -54,7 +54,8 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
     val userState by usuarioViewModel.estado.collectAsState()
     val currentUser by mainViewModel.currentUser.collectAsState()
     var isEditing by remember { mutableStateOf(false) }
-    var showDialog by remember { mutableStateOf(false) }
+    var showPhotoDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LaunchedEffect(currentUser) {
@@ -109,14 +110,14 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         }
     )
 
-    if (showDialog) {
+    if (showPhotoDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showPhotoDialog = false },
             title = { Text("Foto de perfil") },
             text = { Text("Elige una opción para tu foto de perfil.") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    showPhotoDialog = false
                     val permission = Manifest.permission.CAMERA
                     if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                         val uri = createImageUri(context)
@@ -131,7 +132,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    showPhotoDialog = false
                     val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         Manifest.permission.READ_MEDIA_IMAGES
                     } else {
@@ -144,6 +145,31 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
                     }
                 }) {
                     Text("Elegir de la galería")
+                }
+            }
+        )
+    }
+
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Eliminar Cuenta") },
+            text = { Text("¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmDialog = false
+                    usuarioViewModel.deleteCurrentUser { success ->
+                        if (success) {
+                            mainViewModel.logout()
+                        }
+                    }
+                }) {
+                    Text("Confirmar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancelar")
                 }
             }
         )
@@ -164,7 +190,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
                 imageUri = userState.profilePictureUri,
                 size = 150.dp,
                 modifier = Modifier
-                    .clickable(enabled = isEditing) { showDialog = true }
+                    .clickable(enabled = isEditing) { showPhotoDialog = true }
                     .then(
                         if (isEditing) Modifier.border(
                             width = 2.dp,
@@ -276,6 +302,12 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             )
         ) {
             Text("Cerrar Sesión")
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        TextButton(onClick = { showDeleteConfirmDialog = true }) {
+            Text("Eliminar Cuenta", color = MaterialTheme.colorScheme.error)
         }
     }
 }

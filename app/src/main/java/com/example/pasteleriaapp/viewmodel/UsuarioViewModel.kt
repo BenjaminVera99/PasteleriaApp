@@ -61,15 +61,21 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     fun registrarUsuario(onResult: (Usuario?) -> Unit) {
         if (estaValidadoElFormulario()) {
             viewModelScope.launch {
-                val nuevoUsuario = Usuario(
-                    nombre = _estado.value.nombre,
-                    correo = _estado.value.correo,
-                    contrasena = _estado.value.contrasena,
-                    direccion = _estado.value.direccion
-                )
-                usuarioRepository.registrarUsuario(nuevoUsuario)
-                val usuarioRegistrado = usuarioRepository.findUserByEmail(nuevoUsuario.correo)
-                onResult(usuarioRegistrado)
+                try {
+                    val nuevoUsuario = Usuario(
+                        nombre = _estado.value.nombre,
+                        correo = _estado.value.correo,
+                        contrasena = _estado.value.contrasena,
+                        direccion = _estado.value.direccion
+                    )
+                    usuarioRepository.registrarUsuario(nuevoUsuario)
+                    val usuarioRegistrado = usuarioRepository.findUserByEmail(nuevoUsuario.correo)
+                    onResult(usuarioRegistrado)
+                } catch (e: Exception) {
+                    // El correo ya existe
+                    _estado.update { it.copy(errores = it.errores.copy(correo = "El correo electrónico ya está en uso.")) }
+                    onResult(null)
+                }
             }
         } else {
             onResult(null)
@@ -108,6 +114,18 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                 )
                 usuarioRepository.updateUser(updatedUser)
                 onUserUpdated(updatedUser) // Notifica al MainViewModel
+            }
+        }
+    }
+
+    fun deleteCurrentUser(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val userEmail = _estado.value.correo
+            if (userEmail.isNotBlank()) {
+                usuarioRepository.deleteUserByEmail(userEmail)
+                onResult(true)
+            } else {
+                onResult(false)
             }
         }
     }
