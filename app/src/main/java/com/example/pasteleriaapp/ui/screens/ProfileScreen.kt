@@ -6,17 +6,25 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,12 +57,10 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
     var showDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Carga los datos del usuario actual en el ViewModel del perfil
     LaunchedEffect(currentUser) {
         currentUser?.let { usuarioViewModel.onUserLoaded(it) }
     }
 
-    // --- Lanzadores de Contenido (Galería y Cámara) ---
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -82,7 +89,6 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         }
     )
 
-    // --- Lanzadores de Permisos ---
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -103,7 +109,6 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         }
     )
 
-    // --- Diálogo para elegir foto ---
     if (showDialog) {
         AlertDialog(
             onDismissRequest = { showDialog = false },
@@ -144,7 +149,6 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         )
     }
 
-    // --- UI de la Pantalla ---
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -155,15 +159,48 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         Text("Mi Perfil", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 32.dp))
         Spacer(modifier = Modifier.height(24.dp))
 
-        ImagenInteligente(
-            imageUri = userState.profilePictureUri,
-            size = 150.dp,
-            modifier = Modifier.clickable { showDialog = true } 
-        )
+        Box {
+            ImagenInteligente(
+                imageUri = userState.profilePictureUri,
+                size = 150.dp,
+                modifier = Modifier
+                    .clickable(enabled = isEditing) { showDialog = true }
+                    .then(
+                        if (isEditing) Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = CircleShape
+                        ) else Modifier
+                    )
+            )
+            if (isEditing) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Editar foto",
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
+                        .padding(8.dp),
+                    tint = Color.White
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
         
-        ProfileInfoRow(label = "Nombre", value = userState.nombre)
+        if (isEditing) {
+            OutlinedTextField(
+                value = userState.nombre,
+                onValueChange = usuarioViewModel::onNombreChange,
+                label = { Text("Nombre") },
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            ProfileInfoRow(label = "Nombre", value = userState.nombre)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (isEditing) {
             OutlinedTextField(
@@ -191,11 +228,42 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Button(
-            onClick = { isEditing = !isEditing },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (isEditing) "Guardar Cambios" else "Editar Perfil")
+        if (isEditing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { 
+                        currentUser?.let { usuarioViewModel.onUserLoaded(it) }
+                        isEditing = false
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Cancelar")
+                }
+                Button(
+                    onClick = { 
+                        usuarioViewModel.saveChanges { updatedUser ->
+                            mainViewModel.onUserUpdated(updatedUser)
+                        }
+                        isEditing = false 
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Guardar Cambios")
+                }
+            }
+        } else {
+            Button(
+                onClick = { isEditing = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Editar Perfil")
+            }
         }
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -204,7 +272,7 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             onClick = { mainViewModel.logout() },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
+                containerColor = MaterialTheme.colorScheme.error
             )
         ) {
             Text("Cerrar Sesión")

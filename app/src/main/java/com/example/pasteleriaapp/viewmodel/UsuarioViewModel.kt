@@ -1,7 +1,6 @@
 package com.example.pasteleriaapp.viewmodel
 
 import android.app.Application
-import android.content.Context
 import android.net.Uri
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
@@ -15,7 +14,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.io.File
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
 
@@ -94,6 +92,21 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                 val updatedUser = user.copy(profilePictureUri = imageUri.toString())
                 usuarioRepository.updateUser(updatedUser)
                 _estado.update { it.copy(profilePictureUri = imageUri.toString()) }
+                onUserUpdated(updatedUser) // Notifica al MainViewModel
+            }
+        }
+    }
+    
+    fun saveChanges(onUserUpdated: (Usuario) -> Unit) {
+        viewModelScope.launch {
+            val user = usuarioRepository.findUserByEmail(_estado.value.correo)
+            if (user != null) {
+                val updatedUser = user.copy(
+                    nombre = _estado.value.nombre,
+                    correo = _estado.value.correo,
+                    direccion = _estado.value.direccion
+                )
+                usuarioRepository.updateUser(updatedUser)
                 onUserUpdated(updatedUser) // Notifica al MainViewModel
             }
         }
