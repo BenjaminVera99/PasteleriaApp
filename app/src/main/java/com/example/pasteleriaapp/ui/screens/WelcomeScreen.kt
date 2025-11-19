@@ -58,7 +58,7 @@ fun WelcomeScreen(mainViewModel: MainViewModel) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         Button(
-            onClick = { mainViewModel.navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true) },
+            onClick = { mainViewModel.navigateTo(AppRoute.Home, popUpTo = AppRoute.Welcome, inclusive = true) },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Iniciar como invitado")

@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.viewmodel.MainViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 fun OrderHistoryScreen(mainViewModel: MainViewModel) {
@@ -76,10 +78,16 @@ fun OrderCard(order: Order) {
             Text("Enviado a: ${order.shippingAddress}", style = MaterialTheme.typography.bodySmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = String.format("Total: $%.0f", order.totalPrice),
+                text = "Total: ${formatPrice(order.totalPrice)}",
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.End)
             )
         }
     }
+}
+
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
+    format.maximumFractionDigits = 0
+    return format.format(price).replace("COP", "$").trim()
 }

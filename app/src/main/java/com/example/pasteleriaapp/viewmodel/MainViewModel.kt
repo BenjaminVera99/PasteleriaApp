@@ -53,6 +53,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
+    val isLoading: StateFlow<Boolean> = productoRepository.isLoading
 
     // --- Estados de Sesión, Carrito y Pedidos ---
     private val _currentUser = MutableStateFlow<Usuario?>(null)
@@ -97,7 +98,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _guestCartItems.value = emptyList() // El carrito de invitado se descarta
         loadCartForUser(usuario.id)
         loadOrdersForUser(usuario.id)
-        navigateTo(AppRoute.Home, popUpRoute = AppRoute.Welcome, inclusive = true)
+        navigateTo(AppRoute.Home, popUpTo = AppRoute.Welcome, inclusive = true)
     }
 
     fun onUserUpdated(updatedUser: Usuario) {
@@ -105,19 +106,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
-        // 1. Cancela las suscripciones de datos del usuario anterior.
         cartJob?.cancel()
         ordersJob?.cancel()
-        
-        // 2. Limpia todos los estados relacionados con la sesión.
         _currentUser.value = null
         _isLoggedIn.value = false
         _dbCartItems.value = emptyList()
         _orders.value = emptyList()
-        _guestCartItems.value = emptyList() // Asegura que el carrito de invitado también se limpie.
-
-        // 3. Navega a la pantalla de bienvenida.
-        navigateTo(AppRoute.Welcome, popUpRoute = AppRoute.Home, inclusive = true)
+        _guestCartItems.value = emptyList()
+        navigateTo(AppRoute.Welcome, popUpTo = AppRoute.Home, inclusive = true)
     }
 
     private fun loadCartForUser(userId: Int) {
@@ -139,7 +135,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val currentCart = uiCartItems.value
         if (currentCart.isNotEmpty()) {
             val newOrder = Order(
-                userId = _currentUser.value?.id, // Null si es invitado
+                userId = _currentUser.value?.id,
                 items = currentCart,
                 totalPrice = cartTotal.value,
                 date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
@@ -155,11 +151,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
                 _guestCartItems.value = emptyList()
             }
-            navigateTo(AppRoute.Home, popUpRoute = AppRoute.Cart, inclusive = true)
+            navigateTo(AppRoute.Home, popUpTo = AppRoute.Cart, inclusive = true)
         }
     }
 
-    // --- Lógica del Carrito (para Invitados y Usuarios) ---
+    // --- Lógica del Carrito ---
     fun addToCart(product: Product) {
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.addToCart(it, product.id) } }
@@ -199,8 +195,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- Funciones de Navegación ---
-    fun navigateTo(appRoute: AppRoute, popUpRoute: AppRoute? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
-        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(appRoute, popUpRoute, inclusive, singleTop)) }
+    fun navigateTo(appRoute: AppRoute, popUpTo: AppRoute? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
+        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(appRoute, popUpTo, inclusive, singleTop)) }
     }
     fun navigateBack() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.PopBackStack) } }
     fun navigateUp() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateUp) } }

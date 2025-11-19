@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +73,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
                     items(cartItems) { item ->
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("${item.quantity}x ${item.product.name}")
-                            Text("$${item.product.price * item.quantity}")
+                            Text(formatPrice(item.product.price * item.quantity))
                         }
                     }
                 }
@@ -79,7 +81,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = String.format("Total: $%.0f", total),
+                text = "Total: ${formatPrice(total)}",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 modifier = Modifier.align(Alignment.End)
@@ -112,4 +114,10 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
             }
         }
     }
+}
+
+private fun formatPrice(price: Double): String {
+    val format = NumberFormat.getCurrencyInstance(Locale("es", "CO"))
+    format.maximumFractionDigits = 0
+    return format.format(price).replace("COP", "$").trim()
 }

@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -36,7 +38,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -53,6 +54,7 @@ import java.util.Locale
 fun HomeScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val products by viewModel.products.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
@@ -79,22 +81,34 @@ fun HomeScreen(viewModel: MainViewModel) {
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(products) { product ->
-                ProductCard(
-                    product = product,
-                    onCardClick = { viewModel.navigateTo(AppRoute.Detail(product.id.toString())) },
-                    onAddToCartClick = {
-                        viewModel.addToCart(product)
-                        Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
-                    }
+            if (isLoading && products.isEmpty()) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (products.isEmpty()) {
+                Text(
+                    text = "No hay productos disponibles en este momento.",
+                    modifier = Modifier.align(Alignment.Center)
                 )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(products) { product ->
+                        ProductCard(
+                            product = product,
+                            onCardClick = { viewModel.navigateTo(AppRoute.Detail(product.id.toString())) },
+                            onAddToCartClick = {
+                                viewModel.addToCart(product)
+                                Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -116,13 +130,13 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = product.imageUrl ?: product.imageResId, // Usa la URL si existe, si no, el recurso local
+                model = product.imageUrl ?: product.imageResId,
                 contentDescription = product.name,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(id = R.drawable.milsabores) // Imagen de placeholder mientras carga
+                placeholder = painterResource(id = R.drawable.milsabores)
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {

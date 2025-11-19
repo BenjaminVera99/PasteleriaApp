@@ -9,6 +9,9 @@ import com.example.pasteleriaapp.model.Product
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -17,7 +20,10 @@ class ProductoRepository(application: Application) {
     private val productDao: ProductDao
     private val apiService = RetrofitInstance.api
 
-    // La fuente de verdad para los productos es la base de datos.
+    // Estado de carga
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     val products: Flow<List<Product>>
 
     init {
@@ -25,17 +31,13 @@ class ProductoRepository(application: Application) {
         productDao = database.productDao()
         products = productDao.getProducts()
 
-        // Inicia la actualización de datos desde la red en segundo plano.
         CoroutineScope(Dispatchers.IO).launch {
             refreshProducts()
         }
     }
 
-    /**
-     * Intenta actualizar los productos desde la API. Si falla, y la base de datos está vacía,
-     * la llena con los datos locales de respaldo.
-     */
     private suspend fun refreshProducts() {
+        _isLoading.value = true
         try {
             val networkProducts = apiService.getProducts()
             productDao.insertAll(networkProducts)
@@ -46,11 +48,13 @@ class ProductoRepository(application: Application) {
                 Log.d("ProductoRepository", "La base de datos está vacía. Cargando desde el respaldo local.")
                 productDao.insertAll(backupProducts)
             }
+        } finally {
+            _isLoading.value = false // Se asegura de que el estado de carga siempre se desactive
         }
     }
 }
 
-// Lista de productos de respaldo, ahora interna al repositorio.
+// Lista de productos de respaldo...
 private val backupProducts = listOf(
     Product(
         id = 1,
