@@ -33,26 +33,32 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import coil.ImageLoader // ⬅️ IMPORTACIÓN AGREGADA
-import coil.ImageLoaderFactory // ⬅️ IMPORTACIÓN AGREGADA
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
 import com.example.pasteleriaapp.ui.components.MainBottomBar
 import com.example.pasteleriaapp.ui.screens.*
 import com.example.pasteleriaapp.ui.theme.PasteleriaAppTheme
 import com.example.pasteleriaapp.ui.theme.Pacifico
-import com.example.pasteleriaapp.util.AppImageLoader // ⬅️ IMPORTACIÓN AGREGADA
+import com.example.pasteleriaapp.util.AppImageLoader // Importación de tu cargador
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.MainViewModelFactory
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
-// ⭐ CORRECCIÓN CLAVE: La clase implementa ImageLoaderFactory ⭐
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⭐⭐⭐ CÓDIGO DE LIMPIEZA DE CACHÉ AÑADIDO ⭐⭐⭐
+        // Esto llama a la función clearCache() que agregamos en AppImageLoader.kt
+        val appImageLoader = AppImageLoader(application)
+        appImageLoader.clearCache()
+        // ⭐⭐⭐ FIN DE CÓDIGO DE LIMPIEZA ⭐⭐⭐
+
         enableEdgeToEdge()
         val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
         val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
@@ -137,6 +143,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
             }
         }
     }
+
     override fun newImageLoader(): ImageLoader {
         return AppImageLoader(application).newImageLoader()
     }

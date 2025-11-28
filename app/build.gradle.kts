@@ -9,9 +9,7 @@ plugins {
 
 android {
     namespace = "com.example.pasteleriaapp"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36 // Se usa la versión directa
 
     defaultConfig {
         applicationId = "com.example.pasteleriaapp"
@@ -63,10 +61,15 @@ dependencies {
 
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")    // Coroutines
+    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation(libs.androidx.work.runtime.ktx)
+
+    // ❌ ELIMINADA: Esta no es necesaria en una aplicación Android
+    // implementation(libs.testng)
 
     // Room
     val roomVersion = "2.7.0-beta01"
@@ -74,12 +77,18 @@ dependencies {
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
+    // ❌ ELIMINADA: Usualmente no necesaria manualmente, Kapt la maneja
+    // implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
 
     // Konfetti
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")
 
-    testImplementation(libs.junit)
+    // ⭐ CORRECCIÓN CLAVE: Excluir hamcrest-core para resolver la duplicación ⭐
+    testImplementation(libs.junit) {
+        exclude(group = "org.hamcrest", module = "hamcrest-core")
+    }
+
+    // Asegurarse que la dependencia de AndroidX Test no cause conflicto
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 
 object RetrofitInstance {
     // Apuntando al servidor local (tu PC) desde el emulador de Android
-    private const val BASE_URL = "http://192.168.0.8:9090/api/"
+    private const val BASE_URL = "http://192.168.0.10:9090/api/"
 
     val api: ApiService by lazy {
         Retrofit.Builder()
