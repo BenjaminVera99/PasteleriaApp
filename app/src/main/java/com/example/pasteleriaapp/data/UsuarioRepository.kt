@@ -1,6 +1,6 @@
 package com.example.pasteleriaapp.data
 
-import com.example.pasteleriaapp.data.network.UsuarioDao
+import com.example.pasteleriaapp.data.dao.UsuarioDao
 import com.example.pasteleriaapp.model.Usuario
 
 class UsuarioRepository(private val usuarioDao: UsuarioDao) {

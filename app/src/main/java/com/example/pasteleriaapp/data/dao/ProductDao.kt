@@ -1,4 +1,4 @@
-package com.example.pasteleriaapp.data.network
+package com.example.pasteleriaapp.data.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
@@ -9,9 +9,13 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ProductDao {
+
     @Query("SELECT * FROM products")
     fun getProducts(): Flow<List<Product>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertAll(products: List<Product>)
+
+    @Query("DELETE FROM products")
+    suspend fun clearTable()
 }

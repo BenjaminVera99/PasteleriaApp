@@ -1,6 +1,6 @@
 package com.example.pasteleriaapp.data
 
-import com.example.pasteleriaapp.data.network.OrderDao
+import com.example.pasteleriaapp.data.dao.OrderDao
 import com.example.pasteleriaapp.model.Order
 import kotlinx.coroutines.flow.Flow
 
@@ -10,7 +10,7 @@ class OrderRepository(private val orderDao: OrderDao) {
         orderDao.insertOrder(order)
     }
 
-    fun getOrdersForUser(userId: Int): Flow<List<Order>> {
+    fun getOrdersForUser(userId: Long): Flow<List<Order>> {
         return orderDao.getOrdersForUser(userId)
     }
 }

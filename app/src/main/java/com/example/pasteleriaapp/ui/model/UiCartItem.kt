@@ -1,11 +1,9 @@
 package com.example.pasteleriaapp.ui.model
 
 import com.example.pasteleriaapp.model.Product
+import kotlinx.serialization.Serializable
 
-/**
- * Clase de datos que representa un item del carrito para la UI.
- * Contiene el objeto Product completo para un acceso fácil a sus detalles.
- */
+@Serializable
 data class UiCartItem(
     val product: Product,
     val quantity: Int

@@ -103,8 +103,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _currentUser.value = usuario
         _isLoggedIn.value = true
         _guestCartItems.value = emptyList()
-        loadCartForUser(usuario.id)
-        loadOrdersForUser(usuario.id)
+        loadCartForUser(usuario.id!!)
+        loadOrdersForUser(usuario.id!!)
         navigateTo(AppRoute.Home.route, popUpTo = AppRoute.Welcome.route, inclusive = true)
     }
 
@@ -123,14 +123,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         navigateTo(AppRoute.Welcome.route, popUpTo = AppRoute.Home.route, inclusive = true)
     }
 
-    private fun loadCartForUser(userId: Int) {
+    private fun loadCartForUser(userId: Long) {
         cartJob?.cancel()
         cartJob = cartRepository.getCartForUser(userId)
             .onEach { _dbCartItems.value = it }
             .launchIn(viewModelScope)
     }
 
-    private fun loadOrdersForUser(userId: Int) {
+    private fun loadOrdersForUser(userId: Long) {
         ordersJob?.cancel()
         ordersJob = orderRepository.getOrdersForUser(userId)
             .onEach { _orders.value = it }
@@ -143,10 +143,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
 
+        val userIdLong: Long? = _currentUser.value?.id?.toLong()
+
         val currentCart = uiCartItems.value
         if (currentCart.isNotEmpty()) {
             val newOrder = Order(
-                userId = _currentUser.value?.id,
+                userId = userIdLong?.toInt(),
                 items = currentCart,
                 totalPrice = cartTotal.value,
                 date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date()),
@@ -155,9 +157,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 buyerEmail = buyerEmail
             )
             viewModelScope.launch { orderRepository.placeOrder(newOrder) }
-            
+
             if (_isLoggedIn.value) {
-                _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.clearCart(it) } }
+                _currentUser.value?.id?.let { userId ->
+                    viewModelScope.launch { cartRepository.clearCart(userId.toLong()) }
+                }
             } else {
                 _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
                 _guestCartItems.value = emptyList()
@@ -174,9 +178,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _uiEvents.emit(UiEvent.ShowSnackbar("${product.name} añadido al carrito"))
         }
-        
+
         if (_isLoggedIn.value) {
-            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.addToCart(it, product.id) } }
+            // ✅ Corregido: Asegurar que el ID del producto es Long y el ID de usuario es Long
+            _currentUser.value?.id?.let { userId ->
+                viewModelScope.launch { cartRepository.addToCart(userId.toLong(), product.id) }
+            }
         } else {
             _guestCartItems.update { cart ->
                 val existing = cart.find { it.product.id == product.id }
@@ -185,30 +192,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun removeFromCart(productId: Int) {
+    fun removeFromCart(productId: Long) { // ✅ De Int a Long
         if (_isLoggedIn.value) {
-            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.removeFromCart(it, productId) } }
+            _currentUser.value?.id?.let { userId ->
+                viewModelScope.launch { cartRepository.removeFromCart(userId.toLong(), productId) }
+            }
         } else {
             _guestCartItems.update { cart -> cart.filterNot { it.product.id == productId } }
         }
     }
 
-    fun increaseCartItem(productId: Int) {
+    fun increaseCartItem(productId: Long) {
         if (_isLoggedIn.value) {
-            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.increaseQuantity(it, productId) } }
+            _currentUser.value?.id?.let { userIdInt ->
+
+                val userIdLong = userIdInt.toLong()
+
+                viewModelScope.launch {
+                    cartRepository.increaseQuantity(userIdLong, productId)
+                }
+            }
         } else {
-            _guestCartItems.update { cart -> cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity + 1) else it } }
+            _guestCartItems.update { cart ->
+                cart.map {
+                    if (it.product.id == productId) {
+                        it.copy(quantity = it.quantity + 1)
+                    } else {
+                        it
+                    }
+                }
+            }
         }
     }
 
-    fun decreaseCartItem(productId: Int) {
+    fun decreaseCartItem(productId: Long) { // ✅ De Int a Long
         if (_isLoggedIn.value) {
-            _currentUser.value?.id?.let { viewModelScope.launch { cartRepository.decreaseQuantity(it, productId) } }
-        } else {
-            _guestCartItems.update { cart ->
-                val item = cart.find { it.product.id == productId }
-                if (item != null && item.quantity > 1) cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity - 1) else it } else cart
+            _currentUser.value?.id?.let { userId ->
+                viewModelScope.launch { cartRepository.decreaseQuantity(userId.toLong(), productId) }
             }
+        } else {
+            _guestCartItems.update { cart -> cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity + 1) else it } }
         }
     }
 

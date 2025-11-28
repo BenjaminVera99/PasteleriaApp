@@ -40,8 +40,12 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 @Composable
 fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
     val products by mainViewModel.products.collectAsState()
-    // Buscamos el producto en la lista del ViewModel
-    val product = products.find { it.id == itemId.toIntOrNull() }
+
+    // ✅ CORRECCIÓN 1: Convertir la String del argumento a Long, no a Int.
+    val productIdLong = itemId.toLongOrNull()
+
+    // Buscamos el producto usando el ID Long
+    val product = products.find { it.id == productIdLong }
     val context = LocalContext.current
 
     Scaffold(
@@ -70,7 +74,7 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
         ) {
             if (product != null) {
                 AsyncImage(
-                    model = product.imageUrl ?: product.imageResId,
+                    model = "http://10.0.2.2:9090/" + product.img,
                     contentDescription = product.name,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -80,15 +84,23 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
                     placeholder = painterResource(id = R.drawable.milsabores)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // ✅ CORRECCIÓN 2: Usar la propiedad 'name' o 'category' para un texto descriptivo
+                // Asumiendo que tu modelo Product NO tiene la propiedad 'description',
+                // mostramos el nombre del producto o la categoría como sustituto.
+                // Si SÍ tienes la propiedad 'description', úsala aquí.
                 Text(
-                    text = product.description,
+                    text = "${product.name} (${product.category})", // Mostrar nombre y categoría
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.weight(1f))
+
                 Button(
-                    onClick = { 
+                    onClick = {
                         mainViewModel.addToCart(product)
+                        // Ya no necesitas Toast si el ViewModel emite UiEvent.ShowSnackbar
+                        // Pero si quieres mantenerlo, está bien:
                         Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),

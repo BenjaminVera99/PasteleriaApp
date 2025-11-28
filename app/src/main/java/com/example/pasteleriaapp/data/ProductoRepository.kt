@@ -2,9 +2,8 @@ package com.example.pasteleriaapp.data
 
 import android.app.Application
 import android.util.Log
-import com.example.pasteleriaapp.R
-import com.example.pasteleriaapp.data.network.ProductDao
-import com.example.pasteleriaapp.data.network.RetrofitInstance
+import com.example.pasteleriaapp.data.dao.ProductDao
+import com.example.pasteleriaapp.data.dao.RetrofitInstance
 import com.example.pasteleriaapp.model.Product
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +23,7 @@ class ProductoRepository(application: Application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    // Flow de productos desde Room
     val products: Flow<List<Product>>
 
     init {
@@ -31,99 +31,34 @@ class ProductoRepository(application: Application) {
         productDao = database.productDao()
         products = productDao.getProducts()
 
+        // Primera carga automática
         CoroutineScope(Dispatchers.IO).launch {
             refreshProducts()
         }
     }
 
-    private suspend fun refreshProducts() {
+    // Refrescar datos desde la API y guardarlos en Room
+    suspend fun refreshProducts() {
         _isLoading.value = true
+
         try {
             val networkProducts = apiService.getProducts()
+
+            // Sobrescribe completamente la BD con datos del servidor
+            productDao.clearTable()
             productDao.insertAll(networkProducts)
-            Log.d("ProductoRepository", "Productos actualizados desde la API.")
+
+            Log.d("ProductoRepository", "Productos actualizados desde el servidor.")
+
         } catch (e: Exception) {
-            Log.e("ProductoRepository", "Error al actualizar desde la API: ${e.message}")
+            Log.e("ProductoRepository", "Error al cargar desde API: ${e.message}")
+
+            // Si falla la API y NO hay datos en Room
             if (products.first().isEmpty()) {
-                Log.d("ProductoRepository", "La base de datos está vacía. Cargando desde el respaldo local.")
-                productDao.insertAll(backupProducts)
+                Log.e("ProductoRepository", "No hay datos locales. La app no puede cargar productos.")
             }
         } finally {
-            _isLoading.value = false // Se asegura de que el estado de carga siempre se desactive
+            _isLoading.value = false
         }
     }
 }
-
-// Lista de productos de respaldo...
-private val backupProducts = listOf(
-    Product(
-        id = 1,
-        name = "Pastel de Chocolate",
-        price = 25000.0,
-        imageResId = R.drawable.pastel_chocolate,
-        description = "Un clásico irresistible. Bizcocho de chocolate húmedo relleno y cubierto con una rica ganache de chocolate semi-amargo."
-    ),
-    Product(
-        id = 2,
-        name = "Cheesecake de Fresa",
-        price = 30000.0,
-        imageResId = R.drawable.cheesecake_fresa,
-        description = "Cremoso cheesecake sobre una base de galleta, coronado con una generosa capa de mermelada de fresas frescas."
-    ),
-    Product(
-        id = 3,
-        name = "Tarta de Manzana",
-        price = 20000.0,
-        imageResId = R.drawable.tarta_manzana,
-        description = "La tarta casera por excelencia. Finas láminas de manzana sobre una base de hojaldre crujiente con un toque de canela."
-    ),
-    Product(
-        id = 4,
-        name = "Galletas con Chispas",
-        price = 10000.0,
-        imageResId = R.drawable.galletas_chispas,
-        description = "Una docena de galletas recién horneadas, crujientes por fuera y suaves por dentro, cargadas de chispas de chocolate."
-    ),
-    Product(
-        id = 5,
-        name = "Cupcakes de Vainilla",
-        price = 5000.0,
-        imageResId = R.drawable.cupcakes_vainilla,
-        description = "4 cupcakes esponjosos de vainilla con un frosting de crema de mantequilla suave y decoraciones de azúcar."
-    ),
-    Product(
-        id = 6,
-        name = "Donas Glaseadas",
-        price = 6000.0,
-        imageResId = R.drawable.donas_glaseadas,
-        description = "3 porciones de donas tiernas y esponjosas, cubiertas con un glaseado de azúcar clásico que se derrite en la boca."
-    ),
-    Product(
-        id = 7,
-        name = "Pastel de Zanahoria",
-        price = 28000.0,
-        imageResId = R.drawable.pastel_zanahoria,
-        description = "Un bizcocho especiado y húmedo con zanahoria rallada y nueces, cubierto con un delicioso frosting de queso crema."
-    ),
-    Product(
-        id = 8,
-        name = "Tiramisú Clásico",
-        price = 32000.0,
-        imageResId = R.drawable.tiramisu,
-        description = "Capas de bizcochos de soletilla empapados en café y licor, alternadas con una crema suave de mascarpone y cacao en polvo."
-    ),
-    Product(
-        id = 9,
-        name = "Rollos de canela",
-        price = 15000.0,
-        imageResId = R.drawable.rollos_de_canela,
-        description = "Sabrosos Rollos de canela perfectos para una tarde de sabor inigualable."
-    ),
-    Product(
-        id = 10,
-        name = "Tarta Tres Leches",
-        price = 27000.0,
-        imageResId = R.drawable.tres_leches,
-        description = "Bizcocho esponjoso bañado en una mezcla de tres tipos de leche, cubierto con merengue suave y un toque de canela."
-    )
-)

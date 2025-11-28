@@ -1,32 +1,35 @@
 package com.example.pasteleriaapp.data
 
-import com.example.pasteleriaapp.data.network.CartDao
+import com.example.pasteleriaapp.data.dao.CartDao
 import com.example.pasteleriaapp.model.CartItem
 import kotlinx.coroutines.flow.Flow
 
 class CartRepository(private val cartDao: CartDao) {
 
-    fun getCartForUser(userId: Int): Flow<List<CartItem>> {
+    // Cambiar userId: Int a userId: Long
+    fun getCartForUser(userId: Long): Flow<List<CartItem>> {
         return cartDao.getCartItemsForUser(userId)
     }
 
-    suspend fun addToCart(userId: Int, productId: Int) {
+    // Cambiar a Long
+    suspend fun addToCart(userId: Long, productId: Long) {
         val existingItem = cartDao.getCartItem(userId, productId)
         if (existingItem != null) {
-            // Si el item ya existe, incrementa la cantidad
             val updatedItem = existingItem.copy(quantity = existingItem.quantity + 1)
             cartDao.insertOrUpdateItem(updatedItem)
         } else {
-            // Si es un item nuevo, lo inserta con cantidad 1
+            // Asegúrate de que CartItem usa Long para userId y productId
             cartDao.insertOrUpdateItem(CartItem(userId = userId, productId = productId, quantity = 1))
         }
     }
 
-    suspend fun removeFromCart(userId: Int, productId: Int) {
+    // Cambiar a Long
+    suspend fun removeFromCart(userId: Long, productId: Long) {
         cartDao.deleteItem(userId, productId)
     }
 
-    suspend fun increaseQuantity(userId: Int, productId: Int) {
+    // Cambiar a Long
+    suspend fun increaseQuantity(userId: Long, productId: Long) {
         val item = cartDao.getCartItem(userId, productId)
         if (item != null) {
             val updatedItem = item.copy(quantity = item.quantity + 1)
@@ -34,21 +37,21 @@ class CartRepository(private val cartDao: CartDao) {
         }
     }
 
-    suspend fun decreaseQuantity(userId: Int, productId: Int) {
+    // Cambiar a Long
+    suspend fun decreaseQuantity(userId: Long, productId: Long) {
         val item = cartDao.getCartItem(userId, productId)
         if (item != null) {
             if (item.quantity > 1) {
-                // Si la cantidad es mayor a 1, la decrementa
                 val updatedItem = item.copy(quantity = item.quantity - 1)
                 cartDao.insertOrUpdateItem(updatedItem)
             } else {
-                // Si la cantidad es 1, elimina el item del carrito
                 cartDao.deleteItem(userId, productId)
             }
         }
     }
 
-    suspend fun clearCart(userId: Int) {
+    // Cambiar a Long
+    suspend fun clearCart(userId: Long) {
         cartDao.clearCart(userId)
     }
 }

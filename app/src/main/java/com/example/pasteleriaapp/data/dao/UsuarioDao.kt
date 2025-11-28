@@ -1,15 +1,15 @@
-package com.example.pasteleriaapp.data.network
+package com.example.pasteleriaapp.data.dao
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import androidx.room.Insert
 import com.example.pasteleriaapp.model.Usuario
 
 @Dao
 interface UsuarioDao {
-    @Insert(onConflict = OnConflictStrategy.FAIL) // Falla si el email ya existe
+    @Insert(onConflict = OnConflictStrategy.Companion.FAIL) // Falla si el email ya existe
     suspend fun insert(usuario: Usuario)
 
     @Update

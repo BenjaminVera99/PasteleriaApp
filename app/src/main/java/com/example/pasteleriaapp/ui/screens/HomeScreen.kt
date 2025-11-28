@@ -107,7 +107,7 @@ fun ProductCard(product: Product, onCardClick: () -> Unit, onAddToCartClick: () 
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = product.imageUrl ?: product.imageResId,
+                model = "http://10.0.2.2:9090/" + product.img,
                 contentDescription = product.name,
                 modifier = Modifier
                     .size(80.dp)

@@ -1,7 +1,6 @@
-package com.example.pasteleriaapp.data.network
+package com.example.pasteleriaapp.data.dao
 
 import androidx.room.Dao
-import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
@@ -12,17 +11,17 @@ import kotlinx.coroutines.flow.Flow
 interface CartDao {
 
     @Query("SELECT * FROM cart_items WHERE userId = :userId")
-    fun getCartItemsForUser(userId: Int): Flow<List<CartItem>>
+    fun getCartItemsForUser(userId: Long): Flow<List<CartItem>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertOrUpdateItem(item: CartItem)
 
     @Query("DELETE FROM cart_items WHERE userId = :userId AND productId = :productId")
-    suspend fun deleteItem(userId: Int, productId: Int)
+    suspend fun deleteItem(userId: Long, productId: Long)
 
     @Query("DELETE FROM cart_items WHERE userId = :userId")
-    suspend fun clearCart(userId: Int)
+    suspend fun clearCart(userId: Long)
 
     @Query("SELECT * FROM cart_items WHERE userId = :userId AND productId = :productId LIMIT 1")
-    suspend fun getCartItem(userId: Int, productId: Int): CartItem?
+    suspend fun getCartItem(userId: Long, productId: Long): CartItem?
 }

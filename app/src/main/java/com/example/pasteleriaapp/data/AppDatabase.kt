@@ -6,10 +6,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.pasteleriaapp.data.converters.OrderItemsConverter
-import com.example.pasteleriaapp.data.network.CartDao
-import com.example.pasteleriaapp.data.network.OrderDao
-import com.example.pasteleriaapp.data.network.ProductDao
-import com.example.pasteleriaapp.data.network.UsuarioDao
+import com.example.pasteleriaapp.data.dao.CartDao
+import com.example.pasteleriaapp.data.dao.OrderDao
+import com.example.pasteleriaapp.data.dao.ProductDao
+import com.example.pasteleriaapp.data.dao.UsuarioDao
 import com.example.pasteleriaapp.model.CartItem
 import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.model.Product
