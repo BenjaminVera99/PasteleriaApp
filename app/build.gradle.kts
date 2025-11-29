@@ -87,6 +87,10 @@ dependencies {
     testImplementation(libs.junit) {
         exclude(group = "org.hamcrest", module = "hamcrest-core")
     }
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("javax.inject:javax.inject:1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
     // Asegurarse que la dependencia de AndroidX Test no cause conflicto
     androidTestImplementation(libs.androidx.junit)
