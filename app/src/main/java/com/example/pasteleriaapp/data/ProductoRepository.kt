@@ -22,10 +22,6 @@ class ProductoRepository(
     val products: Flow<List<Product>> = productDao.getProducts()
 
 
-    // 🔑 CAMBIO 2: Eliminamos la llamada CoroutineScope(Dispatchers.IO).launch { refreshProducts() }
-    // Esto debe ser iniciado por el ViewModel para mejor control del ciclo de vida.
-
-
     // Refrescar datos desde la API y guardarlos en Room
     suspend fun refreshProducts() {
         _isLoading.value = true

@@ -1,301 +1,187 @@
-package com.example.pasteleriaapp.viewmodel
+package com.example.pasteleriaapp
 
-import android.app.Application
-import android.net.Uri
-import android.util.Patterns
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.pasteleriaapp.data.AppDatabase
-import com.example.pasteleriaapp.data.UsuarioRepository
-import com.example.pasteleriaapp.data.dao.RetrofitInstance
-import com.example.pasteleriaapp.data.preferences.AuthTokenManager // 🔑 Importación del Token Manager
-import com.example.pasteleriaapp.model.RegistroData
-import com.example.pasteleriaapp.model.Usuario
-import com.example.pasteleriaapp.model.UsuarioErrores
-import com.example.pasteleriaapp.model.UsuarioUiState
-import com.example.pasteleriaapp.model.InicioSesion // 🔑 Importación de credenciales de Login
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import com.example.pasteleriaapp.data.AppDatabase // Necesario para el Repository
+import com.example.pasteleriaapp.data.UsuarioRepository // Necesario para el Repository
+import com.example.pasteleriaapp.data.dao.RetrofitInstance // Inicialización y API Service
+import com.example.pasteleriaapp.navigation.AppRoute
+import com.example.pasteleriaapp.navigation.NavigationEvent
+import com.example.pasteleriaapp.ui.components.MainBottomBar
+import com.example.pasteleriaapp.ui.screens.*
+import com.example.pasteleriaapp.ui.theme.PasteleriaAppTheme
+import com.example.pasteleriaapp.ui.theme.Pacifico
+import com.example.pasteleriaapp.util.AppImageLoader
+import com.example.pasteleriaapp.viewmodel.MainViewModel
+import com.example.pasteleriaapp.viewmodel.MainViewModelFactory
+import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
+import com.example.pasteleriaapp.viewmodel.UsuarioViewModelFactory
+import kotlinx.coroutines.runBlocking // Para esperar la lectura del token
 
-class UsuarioViewModel(application: Application): AndroidViewModel(application) {
+@OptIn(ExperimentalMaterial3Api::class)
+class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
-    private val usuarioRepository: UsuarioRepository
-    private val authTokenManager: AuthTokenManager // Instancia del Token Manager
+    // 1. Inicialización de ViewModels y Repositorios fuera de onCreate
+    private val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
+    private val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
 
-    private val _estado= MutableStateFlow(UsuarioUiState())
-    val estado: StateFlow<UsuarioUiState> = _estado
-
-    init {
+    // Necesitas el repositorio para buscar al usuario localmente
+    private val usuarioRepository: UsuarioRepository by lazy {
         val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
-        val apiService = RetrofitInstance.api // Obtener la instancia de Retrofit
-
-        // 🔑 Inicialización del Repositorio (DAO local y Servicio API)
-        usuarioRepository = UsuarioRepository(usuarioDao, apiService)
-
-        // 🔑 Inicialización del Token Manager (DataStore)
-        authTokenManager = AuthTokenManager(application)
+        UsuarioRepository(usuarioDao, RetrofitInstance.api)
     }
 
-    // --- Actualizadores de estado para los campos del formulario ---
-    fun onNombreChange(nuevoNombre:String){
-        _estado.update { it.copy(nombre = nuevoNombre, errores = it.errores.copy(nombre=null)) }
-    }
-    fun onApellidosChange(nuevosApellidos:String){
-        _estado.update { it.copy(apellidos = nuevosApellidos, errores = it.errores.copy(apellidos=null)) }
-    }
-    fun onCorreoChange(nuevoCorreo:String){
-        _estado.update { it.copy(correo = nuevoCorreo, errores = it.errores.copy(correo =null)) }
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    fun onContrasenaChange(nuevaContrasena:String){
-        _estado.update { it.copy(contrasena = nuevaContrasena, errores = it.errores.copy(contrasena =null)) }
-    }
+        // Inicializa Retrofit (necesario para el Interceptor y Repositorios)
+        RetrofitInstance.initialize(applicationContext)
 
-    fun onFechaNacimientoChange(nuevaFechaNac:String){
-        _estado.update { it.copy(fechaNacimiento = nuevaFechaNac, errores = it.errores.copy(fechaNacimiento =null)) }
-    }
+        // Código de limpieza de caché
+        val appImageLoader = AppImageLoader(application)
+        appImageLoader.clearCache()
 
-    fun onDireccionChange(nuevaDireccion:String){
-        _estado.update { it.copy(direccion = nuevaDireccion, errores = it.errores.copy(direccion =null)) }
-    }
+        enableEdgeToEdge()
 
-    fun onAceptarTerminosChange(nuevoAceptarTerminos: Boolean){
-        _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos, errores = it.errores.copy(terminos = null)) }
-    }
+        // 2. Determinar la ruta de inicio por defecto
+        var startRoute = AppRoute.Welcome.route
 
-    fun onUserLoaded(usuario: Usuario) {
-        _estado.update { it.copy(
-            nombre = usuario.nombre,
-            correo = usuario.correo,
-            direccion = usuario.direccion,
-            profilePictureUri = usuario.profilePictureUri
-            // Nota: No cargamos apellidos ni fechaNacimiento aquí si no se guardan en Room
-        ) }
-    }
+        // 3. COMPROBACIÓN DE AUTENTICACIÓN PERSISTENTE (Bloque Crítico)
+        runBlocking {
+            val token = usuarioViewModel.checkAuthStatus()
+            val savedEmail = usuarioViewModel.getSavedEmail()
 
-    // --- Lógica de negocio de Registro (API REMOTA) ---
+            if (!token.isNullOrEmpty() && !savedEmail.isNullOrEmpty()) {
+                // Si token Y email existen, intenta cargar el usuario desde Room
+                val usuarioPersistente = usuarioRepository.findUserByEmail(savedEmail)
 
-    fun registrarUsuario(onResult: (Usuario?) -> Unit) {
-        if (estaValidadoElFormulario()) {
-            viewModelScope.launch {
-
-                val registroData = RegistroData(
-                    username = _estado.value.correo,
-                    password = _estado.value.contrasena,
-                    nombres = _estado.value.nombre,
-                    apellidos = _estado.value.apellidos,
-                    fechaNac = convertirAFormatoISO(_estado.value.fechaNacimiento)
-                )
-
-                try {
-                    val resultadoRemoto = usuarioRepository.registrarUsuarioRemoto(registroData)
-
-                    if (resultadoRemoto.isSuccess) {
-                        // ÉXITO API: Guardar usuario en la BD LOCAL (Room)
-                        val nuevoUsuarioLocal = Usuario(
-                            nombre = registroData.nombres,
-                            correo = registroData.username,
-                            contrasena = registroData.password,
-                            direccion = _estado.value.direccion,
-                            profilePictureUri = null
-                        )
-
-                        usuarioRepository.registrarUsuario(nuevoUsuarioLocal) // Guarda en Room
-
-                        val usuarioRegistrado = usuarioRepository.findUserByEmail(nuevoUsuarioLocal.correo)
-                        onResult(usuarioRegistrado)
-
-                    } else {
-                        // ERROR API (400, 500, etc.)
-                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Error desconocido al registrar."
-                        _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
-                        onResult(null)
-                    }
-                } catch (e: Exception) {
-                    // Error de red
-                    _estado.update { it.copy(errores = it.errores.copy(correo = "Error de conexión: ${e.message}")) }
-                    onResult(null)
+                if (usuarioPersistente != null) {
+                    // Cargar la sesión en el MainViewModel (configura isLoggedIn, _currentUser, carrito, etc.)
+                    mainViewModel.initializeUserSession(usuarioPersistente)
+                    startRoute = AppRoute.Home.route // Ir a la pantalla principal
                 }
             }
-        } else {
-            onResult(null)
         }
-    }
+        // FIN DE COMPROBACIÓN
 
-    // --- Lógica de Autenticación (API REMOTA) ---
+        setContent {
+            PasteleriaAppTheme {
+                val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                val snackbarHostState = remember { SnackbarHostState() }
 
-    // ⚠️ CAMBIO en la firma: onResult retorna el Usuario y el Token (String?)
-    fun authenticateUser(onResult: (Usuario?, String?) -> Unit) {
-        if (estaValidadoElLogin()) {
-            viewModelScope.launch {
-                val estadoActual = _estado.value
-                val email = estadoActual.correo
-                val contrasena = estadoActual.contrasena
-
-                // 1. Intentar Autenticación Remota (API)
-                val credencialesRemotas = InicioSesion(username = email, password = contrasena)
-
-                try {
-                    val resultadoRemoto = usuarioRepository.iniciarSesionRemoto(credencialesRemotas)
-
-                    if (resultadoRemoto.isSuccess) {
-                        val loginResponse = resultadoRemoto.getOrNull()!!
-                        val token = loginResponse.token
-
-                        // 2. Éxito Remoto: GUARDAR EL TOKEN y el ROL
-                        authTokenManager.saveAuthData(token, loginResponse.role)
-
-                        // 3. Gestionar usuario local
-                        var usuarioAutenticado = usuarioRepository.findUserByEmail(email)
-
-                        if (usuarioAutenticado == null) {
-                            // Si el usuario existe en el backend pero no en Room, lo guardamos
-                            usuarioAutenticado = Usuario(
-                                nombre = "Usuario Autenticado",
-                                correo = email,
-                                contrasena = contrasena,
-                                direccion = estadoActual.direccion,
-                                profilePictureUri = null
-                            )
-                            usuarioRepository.registrarUsuario(usuarioAutenticado)
+                // Manejo de eventos de navegación del ViewModel
+                LaunchedEffect(Unit) {
+                    mainViewModel.navEvents.collect { event ->
+                        when (event) {
+                            is NavigationEvent.NavigateTo -> {
+                                navController.navigate(event.route) {
+                                    event.popUpTo?.let {
+                                        popUpTo(it) { inclusive = event.inclusive }
+                                    }
+                                    launchSingleTop = event.singleTop
+                                }
+                            }
+                            NavigationEvent.PopBackStack -> navController.popBackStack()
+                            NavigationEvent.NavigateUp -> navController.navigateUp()
                         }
-
-                        onUserLoaded(usuarioAutenticado)
-                        onResult(usuarioAutenticado, token)
-
-                    } else {
-                        // 4. Fallo Remoto: Mostrar el error de credenciales
-                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Fallo al iniciar sesión."
-                        _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
-                        onResult(null, null)
                     }
-                } catch (e: Exception) {
-                    // 5. Error de red/conexión
-                    val mensajeError = e.message ?: "Error de conexión."
-                    _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
-                    onResult(null, null)
+                }
+
+                Scaffold(
+                    snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+                    topBar = {
+                        if (currentRoute == AppRoute.Home.route) {
+                            TopAppBar(
+                                title = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.milsabores),
+                                            contentDescription = "Logo",
+                                            modifier = Modifier.size(40.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Pastelería Mil Sabores",
+                                            fontFamily = Pacifico,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                },
+                                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                            )
+                        }
+                    },
+                    bottomBar = {
+                        if (currentRoute in listOf(AppRoute.Home.route, AppRoute.Cart.route, AppRoute.OrderHistory.route, AppRoute.Profile.route)) {
+                            MainBottomBar(navController = navController, mainViewModel = mainViewModel)
+                        }
+                    }
+                ) { innerPadding ->
+                    // 4. NavHost utiliza la ruta de inicio determinada dinámicamente
+                    NavHost(
+                        navController = navController,
+                        startDestination = startRoute,
+                        modifier = Modifier.padding(innerPadding)
+                    ) {
+                        composable(AppRoute.Welcome.route) { WelcomeScreen(mainViewModel = mainViewModel) }
+                        composable(AppRoute.Login.route) { LoginScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
+                        composable(AppRoute.Register.route) { RegistroScreen(usuarioViewModel = usuarioViewModel, mainViewModel = mainViewModel) }
+                        composable(AppRoute.Home.route) { HomeScreen(viewModel = mainViewModel, snackbarHostState = snackbarHostState) }
+                        composable(AppRoute.Profile.route) { ProfileScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
+                        composable(AppRoute.Cart.route) { CartScreen(mainViewModel = mainViewModel) }
+                        composable(AppRoute.Checkout.route) { CheckoutScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
+                        composable(AppRoute.OrderHistory.route) { OrderHistoryScreen(mainViewModel = mainViewModel) }
+                        composable(AppRoute.OrderConfirmation.route) { OrderConfirmationScreen(mainViewModel = mainViewModel) }
+                        composable(
+                            route = AppRoute.Detail.routePattern,
+                            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+                        ) { backStackEntry ->
+                            val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+                            DetailScreen(itemId = itemId, mainViewModel = mainViewModel)
+                        }
+                    }
                 }
             }
-        } else {
-            onResult(null, null)
         }
     }
 
-    // --- Lógica de Perfil ---
-
-    fun updateProfilePicture(imageUri: Uri, onUserUpdated: (Usuario) -> Unit) {
-        viewModelScope.launch {
-            val user = usuarioRepository.findUserByEmail(_estado.value.correo)
-            if (user != null) {
-                val updatedUser = user.copy(profilePictureUri = imageUri.toString())
-                usuarioRepository.updateUser(updatedUser)
-                _estado.update { it.copy(profilePictureUri = imageUri.toString()) }
-                onUserUpdated(updatedUser)
-            }
-        }
-    }
-
-    fun saveChanges(onUserUpdated: (Usuario) -> Unit) {
-        viewModelScope.launch {
-            val user = usuarioRepository.findUserByEmail(_estado.value.correo)
-            if (user != null) {
-                val updatedUser = user.copy(
-                    nombre = _estado.value.nombre,
-                    correo = _estado.value.correo,
-                    direccion = _estado.value.direccion
-                )
-                usuarioRepository.updateUser(updatedUser)
-                onUserUpdated(updatedUser)
-            }
-        }
-    }
-
-    fun deleteCurrentUser(onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val userEmail = _estado.value.correo
-            if (userEmail.isNotBlank()) {
-                usuarioRepository.deleteUserByEmail(userEmail)
-                // 🔑 También borramos los datos de autenticación local
-                authTokenManager.clearAuthData()
-                onResult(true)
-            } else {
-                onResult(false)
-            }
-        }
-    }
-
-    fun logout() {
-        viewModelScope.launch {
-            // Borramos el token y reseteamos el estado de la UI
-            authTokenManager.clearAuthData()
-            _estado.update { UsuarioUiState() }
-        }
-    }
-
-
-    // --- Validaciones ---
-    fun estaValidadoElFormulario(): Boolean{
-        val formularioActual=_estado.value
-        val errores= UsuarioErrores(
-            nombre = if(formularioActual.nombre.isBlank()) "El campo es obligatorio" else null,
-            apellidos = if(formularioActual.apellidos.isBlank()) "El campo es obligatorio" else null,
-            correo = if(!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser valido" else null,
-            contrasena= if(formularioActual.contrasena.length <6)"La contraseña debe tener al menos 6 caracteres" else null,
-            fechaNacimiento = if(formularioActual.fechaNacimiento.isBlank()) "El campo es obligatorio" else null,
-            direccion = if(formularioActual.direccion.isBlank()) "El campo es obligatorio" else null,
-            terminos = if(!formularioActual.aceptaTerminos) "Debes aceptar los términos" else null
-        )
-
-        val hayErrores=listOfNotNull(
-            errores.nombre,
-            errores.apellidos,
-            errores.correo,
-            errores.contrasena,
-            errores.fechaNacimiento,
-            errores.direccion,
-            errores.terminos
-        ).isNotEmpty()
-
-        _estado.update { it.copy(errores=errores) }
-
-        return !hayErrores
-    }
-
-    fun estaValidadoElLogin(): Boolean {
-        val formularioActual = _estado.value
-        val errores = UsuarioErrores(
-            correo = if (!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser válido" else null,
-            contrasena = if (formularioActual.contrasena.isBlank()) "El campo es obligatorio" else null
-        )
-
-        val hayErrores = listOfNotNull(
-            errores.correo,
-            errores.contrasena
-        ).isNotEmpty()
-
-        val erroresActualizados = _estado.value.errores.copy(
-            correo = errores.correo,
-            contrasena = errores.contrasena
-        )
-
-        _estado.update { it.copy(errores = erroresActualizados) }
-
-        return !hayErrores
-    }
-
-    // --- FUNCIÓN DE UTILIDAD ---
-    /**
-     * Convierte la fecha de entrada (ej: dd-mm-aaaa) al formato ISO (yyyy-MM-dd)
-     * requerido por el backend de Spring Boot.
-     */
-    private fun convertirAFormatoISO(fechaDeEntrada: String): String {
-        val partes = fechaDeEntrada.split("-")
-        return if (partes.size == 3 && partes[2].length == 4) {
-            "${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}"
-        } else {
-            fechaDeEntrada
-        }
+    override fun newImageLoader(): ImageLoader {
+        return AppImageLoader(application).newImageLoader()
     }
 }

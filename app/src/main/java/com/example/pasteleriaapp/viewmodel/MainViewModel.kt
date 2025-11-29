@@ -7,6 +7,7 @@ import com.example.pasteleriaapp.data.AppDatabase
 import com.example.pasteleriaapp.data.CartRepository
 import com.example.pasteleriaapp.data.OrderRepository
 import com.example.pasteleriaapp.data.ProductoRepository
+import com.example.pasteleriaapp.data.dao.RetrofitInstance
 import com.example.pasteleriaapp.model.CartItem
 import com.example.pasteleriaapp.model.Order
 import com.example.pasteleriaapp.model.Product
@@ -43,9 +44,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Repositorios ---
     private val database = AppDatabase.getDatabase(application)
-    private val productoRepository = ProductoRepository(application)
+
+    private val apiService = RetrofitInstance.api
+    private val productoDao = database.productDao()
+    private val productoRepository = ProductoRepository(productoDao, apiService)
+
     private val cartRepository = CartRepository(database.cartDao())
     private val orderRepository = OrderRepository(database.orderDao())
+
+    init {
+        viewModelScope.launch {
+            productoRepository.refreshProducts()
+        }
+    }
 
     // --- Trabajos de Corutinas ---
     private var cartJob: Job? = null
@@ -166,7 +177,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _orders.update { currentOrders -> listOf(newOrder) + currentOrders }
                 _guestCartItems.value = emptyList()
             }
-            navigateTo(AppRoute.OrderConfirmation.route, popUpTo = AppRoute.Checkout.route, inclusive = true)
+            navigateTo(
+                AppRoute.OrderConfirmation.route,
+                popUpTo = AppRoute.Checkout.route,
+                inclusive = true
+            )
             return true
         } else {
             return false
@@ -187,7 +202,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             _guestCartItems.update { cart ->
                 val existing = cart.find { it.product.id == product.id }
-                if (existing == null) cart + UiCartItem(product, 1) else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                if (existing == null) cart + UiCartItem(
+                    product,
+                    1
+                ) else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
             }
         }
     }
@@ -228,17 +246,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun decreaseCartItem(productId: Long) { // ✅ De Int a Long
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { userId ->
-                viewModelScope.launch { cartRepository.decreaseQuantity(userId.toLong(), productId) }
+                viewModelScope.launch {
+                    cartRepository.decreaseQuantity(
+                        userId.toLong(),
+                        productId
+                    )
+                }
             }
         } else {
-            _guestCartItems.update { cart -> cart.map { if (it.product.id == productId) it.copy(quantity = it.quantity + 1) else it } }
+            _guestCartItems.update { cart ->
+                cart.map {
+                    if (it.product.id == productId) it.copy(
+                        quantity = it.quantity + 1
+                    ) else it
+                }
+            }
         }
     }
 
     // --- Funciones de Navegación ---
-    fun navigateTo(route: String, popUpTo: String? = null, inclusive: Boolean = false, singleTop: Boolean = false) {
-        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateTo(route, popUpTo, inclusive, singleTop)) }
+    fun navigateTo(
+        route: String,
+        popUpTo: String? = null,
+        inclusive: Boolean = false,
+        singleTop: Boolean = false
+    ) {
+        CoroutineScope(Dispatchers.Main).launch {
+            _navEvents.emit(
+                NavigationEvent.NavigateTo(
+                    route,
+                    popUpTo,
+                    inclusive,
+                    singleTop
+                )
+            )
+        }
     }
-    fun navigateBack() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.PopBackStack) } }
-    fun navigateUp() { CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateUp) } }
+
+    fun navigateBack() {
+        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.PopBackStack) }
+    }
+
+    fun navigateUp() {
+        CoroutineScope(Dispatchers.Main).launch { _navEvents.emit(NavigationEvent.NavigateUp) }
+    }
+
+    fun initializeUserSession(usuario: Usuario) {
+        // 1. Establece el estado de inicio de sesión
+        _currentUser.value = usuario
+        _isLoggedIn.value = true
+        _guestCartItems.value = emptyList()
+
+        // 2. Carga los datos asociados al usuario persistente
+        usuario.id?.let { userId ->
+            // Tu MainViewModel ya usa Long para loadCartForUser y loadOrdersForUser
+            // Nos aseguramos que el ID sea Long, ya que el ID de Room es a menudo un Long.
+            val userIdLong = userId.toLong()
+
+            loadCartForUser(userIdLong)
+            loadOrdersForUser(userIdLong)
+        }
+    }
 }

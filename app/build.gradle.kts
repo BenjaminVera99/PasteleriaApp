@@ -4,7 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     id("org.jetbrains.kotlin.kapt")
 
-    id("org.jetbrains.kotlin.plugin.serialization")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
 }
 
 android {
@@ -59,6 +59,11 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.10.1")
 
+    //  CONVERSOR GSON (JSON to Object)
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
@@ -68,17 +73,12 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation(libs.androidx.work.runtime.ktx)
 
-    // ❌ ELIMINADA: Esta no es necesaria en una aplicación Android
-    // implementation(libs.testng)
-
     // Room
     val roomVersion = "2.7.0-beta01"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     kapt("androidx.room:room-compiler:$roomVersion")
 
-    // ❌ ELIMINADA: Usualmente no necesaria manualmente, Kapt la maneja
-    // implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.7.0")
 
     // Konfetti
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")

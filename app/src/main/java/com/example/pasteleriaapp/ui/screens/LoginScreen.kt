@@ -1,6 +1,5 @@
 package com.example.pasteleriaapp.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +28,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.R
+import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 
@@ -51,6 +51,8 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
                 modifier = Modifier.size(200.dp)
             )
             Spacer(modifier = Modifier.height(32.dp))
+
+            // --- CAMPO CORREO ---
             OutlinedTextField(
                 value = userState.correo,
                 onValueChange = usuarioViewModel::onCorreoChange,
@@ -65,6 +67,8 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
                 }
             )
             Spacer(modifier = Modifier.height(16.dp))
+
+            // --- CAMPO CONTRASEÑA ---
             OutlinedTextField(
                 value = userState.contrasena,
                 onValueChange = usuarioViewModel::onContrasenaChange,
@@ -80,15 +84,23 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
                 }
             )
             Spacer(modifier = Modifier.height(24.dp))
+
+            // --- BOTÓN ACCEDER (Lógica Remota) ---
             Button(
-                onClick = { 
+                // 🔑 MODIFICACIÓN CLAVE: Manejar usuario y token
+                onClick = {
+                    // 1. Validar campos básicos
                     if (usuarioViewModel.estaValidadoElLogin()) {
-                        usuarioViewModel.authenticateUser { usuario ->
-                            if (usuario != null) {
+                        // 2. Llamar a la autenticación remota
+                        usuarioViewModel.authenticateUser { usuario, token ->
+                            if (usuario != null && token != null) {
+                                // 3. ÉXITO: Iniciar sesión en el MainViewModel y navegar
                                 mainViewModel.login(usuario)
-                            } else {
-                                Toast.makeText(context, "Correo o contraseña incorrectos", Toast.LENGTH_SHORT).show()
+                                mainViewModel.navigateTo(AppRoute.Home.route)
                             }
+                            // 4. FALLO: No hacemos Toast. El error ya se muestra en el OutlinedTextField
+                            // gracias a userState.errores.correo, que el ViewModel actualiza
+                            // con el mensaje de error del backend (ej: "Credenciales incorrectas").
                         }
                     }
                 },
