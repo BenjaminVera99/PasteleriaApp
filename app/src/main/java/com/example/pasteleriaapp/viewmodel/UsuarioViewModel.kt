@@ -8,13 +8,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.pasteleriaapp.data.AppDatabase
 import com.example.pasteleriaapp.data.UsuarioRepository
 import com.example.pasteleriaapp.data.dao.RetrofitInstance
+import com.example.pasteleriaapp.data.dao.UpdateData
 import com.example.pasteleriaapp.data.preferences.AuthTokenManager
 import com.example.pasteleriaapp.model.RegistroData
 import com.example.pasteleriaapp.model.Usuario
 import com.example.pasteleriaapp.model.UsuarioErrores
 import com.example.pasteleriaapp.model.UsuarioUiState
 import com.example.pasteleriaapp.model.InicioSesion
-import com.example.pasteleriaapp.navigation.AppRoute // ⭐ Importar AppRoute
+import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
-// ☝️ ESTA ES LA ÚNICA LÍNEA QUE DEBE CONTENER 'class UsuarioViewModel' EN TU PROYECTO
 
     private val usuarioRepository: UsuarioRepository
     private val authTokenManager: AuthTokenManager
@@ -152,11 +152,12 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                         var usuarioAutenticado = usuarioRepository.findUserByEmail(email)
 
                         if (usuarioAutenticado == null) {
+                            // Versión simple/anterior: Si el usuario no existe en Room, crearlo con datos básicos
                             usuarioAutenticado = Usuario(
                                 nombre = "Usuario Autenticado",
                                 correo = email,
                                 contrasena = contrasena,
-                                direccion = estadoActual.direccion,
+                                direccion = estadoActual.direccion, // Usa la dirección del estado (posiblemente vacía)
                                 profilePictureUri = null
                             )
                             usuarioRepository.registrarUsuario(usuarioAutenticado)
@@ -193,8 +194,88 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
     // --- Lógica de Perfil y Logout ---
 
-    fun updateProfilePicture(imageUri: Uri, onUserUpdated: (Usuario) -> Unit) { /* ... */ }
-    fun saveChanges(onUserUpdated: (Usuario) -> Unit) { /* ... */ }
+    fun updateProfilePicture(imageUri: Uri, onUserUpdated: (Usuario) -> Unit) {
+        viewModelScope.launch {
+            val email = _estado.value.correo
+            val usuarioActual = usuarioRepository.findUserByEmail(email)
+
+            if (usuarioActual != null) {
+                // Crear una copia del usuario con la nueva URI de imagen
+                val updatedUser = usuarioActual.copy(profilePictureUri = imageUri.toString())
+
+                // 1. Guardar en la base de datos local
+                usuarioRepository.updateUser(updatedUser)
+
+                // 2. Actualizar el estado de la UI (para que se vea inmediatamente)
+                onUserLoaded(updatedUser)
+
+                // 3. Notificar al MainViewModel para actualizar el estado global
+                onUserUpdated(updatedUser)
+            }
+        }
+    }
+
+    /**
+     * Función para guardar los cambios de edición del perfil local y remotamente.
+     * Incluye lógica condicional para actualizar la contraseña.
+     */
+    fun saveChanges(onUserUpdated: (Usuario) -> Unit) {
+        if (estaValidadoElPerfil()) { // Usamos la validación que ignora contraseña vacía
+            viewModelScope.launch {
+                val estadoActual = _estado.value
+                val usuarioLocal = usuarioRepository.findUserByEmail(estadoActual.correo)
+
+                if (usuarioLocal == null) return@launch
+
+                // ⭐ Lógica CLAVE: Incluir la contraseña SOLO si el campo NO está vacío ⭐
+                val newPassword = if (estadoActual.contrasena.isNotEmpty()) {
+                    estadoActual.contrasena
+                } else {
+                    null
+                }
+
+                // Creamos el objeto de datos para la API
+                val updateData = UpdateData(
+                    // ⭐ CORRECCIÓN MANTENIDA: Usamos 'nombre' (singular) para coincidir con Swagger ⭐
+                    nombre = estadoActual.nombre,
+                    apellidos = estadoActual.apellidos,
+                    fechaNac = convertirAFormatoISO(estadoActual.fechaNacimiento),
+                    direccion = estadoActual.direccion,
+                    profilePictureUri = usuarioLocal.profilePictureUri,
+                    newPassword = newPassword
+                )
+
+                try {
+                    // ⭐ 1. LLAMADA A LA API REMOTA (auth/update) ⭐
+                    val resultadoRemoto = usuarioRepository.actualizarUsuarioRemoto(updateData)
+
+                    if (resultadoRemoto.isSuccess) {
+                        // 2. ÉXITO REMOTO: Actualizar el usuario LOCAL
+                        val usuarioActualizadoLocal = usuarioLocal.copy(
+                            nombre = estadoActual.nombre,
+                            apellidos = estadoActual.apellidos,
+                            direccion = estadoActual.direccion,
+                            fechaNacimiento = estadoActual.fechaNacimiento,
+                            // Si newPassword tiene valor, usamos ese valor. Si es null, conservamos la contraseña local anterior.
+                            contrasena = newPassword ?: usuarioLocal.contrasena
+                        )
+                        usuarioRepository.updateUser(usuarioActualizadoLocal) // Corregido el nombre de la función local
+
+                        // Limpiamos el campo de contraseña después de guardar, para que no se reenvíe al cancelar/guardar.
+                        _estado.update { it.copy(contrasena = "") }
+
+                        onUserUpdated(usuarioActualizadoLocal) // Notifica al MainViewModel y refresca la UI
+                    } else {
+                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Error desconocido al actualizar."
+                        _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
+                    }
+                } catch (e: Exception) {
+                    val mensajeError = "Error de conexión al guardar cambios: ${e.message}"
+                    _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
+                }
+            }
+        }
+    }
 
     fun deleteCurrentUser(onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
@@ -231,11 +312,13 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                 } else {
                     // 4. FALLO: MOSTRAR MENSAJE DE ERROR DEL SERVIDOR
                     val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Fallo desconocido al eliminar la cuenta."
+                    _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) } // Muestra error en el campo correo
                     onResult(false, mensajeError)
                 }
             } catch (e: Exception) {
                 // 5. ERROR DE RED
                 val mensajeError = "Error de red: No se pudo contactar al servidor para eliminar la cuenta."
+                _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) } // Muestra error en el campo correo
                 onResult(false, mensajeError)
             }
         }
@@ -259,12 +342,62 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
 
     // --- Validaciones ---
+
+    fun estaValidadoElPerfil(): Boolean {
+        val formularioActual = _estado.value
+
+        // ⭐ VALIDACIÓN DE CONTRASEÑA CONDICIONAL ⭐
+        val contrasenaError = if (formularioActual.contrasena.isNotEmpty() && formularioActual.contrasena.length < 6) {
+            "La contraseña debe tener al menos 6 caracteres"
+        } else {
+            null
+        }
+
+        val errores = UsuarioErrores(
+            nombre = if (formularioActual.nombre.isBlank()) "El campo es obligatorio" else null,
+            apellidos = if (formularioActual.apellidos.isBlank()) "El campo es obligatorio" else null,
+            correo = if (!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser válido" else null,
+            fechaNacimiento = if (formularioActual.fechaNacimiento.isBlank()) "El campo es obligatorio" else null,
+            direccion = if (formularioActual.direccion.isBlank()) "El campo es obligatorio" else null,
+
+            // Usamos la validación condicional
+            contrasena = contrasenaError,
+            terminos = null // Ignoramos términos
+        )
+
+        val hayErrores = listOfNotNull(
+            errores.nombre,
+            errores.apellidos,
+            errores.correo,
+            errores.fechaNacimiento,
+            errores.direccion,
+            errores.contrasena // ⭐ Incluir error de contraseña aquí ⭐
+        ).isNotEmpty()
+
+        // Actualizar solo los errores relevantes en el estado
+        _estado.update {
+            it.copy(
+                errores = it.errores.copy(
+                    nombre = errores.nombre,
+                    apellidos = errores.apellidos,
+                    correo = errores.correo,
+                    fechaNacimiento = errores.fechaNacimiento,
+                    direccion = errores.direccion,
+                    contrasena = errores.contrasena, // ⭐ Actualizar el error de contraseña ⭐
+                    terminos = null
+                )
+            )
+        }
+
+        return !hayErrores
+    }
+
     fun estaValidadoElFormulario(): Boolean{
         val formularioActual=_estado.value
         val errores= UsuarioErrores(
             nombre = if(formularioActual.nombre.isBlank()) "El campo es obligatorio" else null,
             apellidos = if(formularioActual.apellidos.isBlank()) "El campo es obligatorio" else null,
-            correo = if(!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe ser valido" else null,
+            correo = if(!Patterns.EMAIL_ADDRESS.matcher(formularioActual.correo).matches()) "El correo debe contener @" else null,
             contrasena= if(formularioActual.contrasena.length <6)"La contraseña debe tener al menos 6 caracteres" else null,
             fechaNacimiento = if(formularioActual.fechaNacimiento.isBlank()) "El campo es obligatorio" else null,
             direccion = if(formularioActual.direccion.isBlank()) "El campo es obligatorio" else null,
