@@ -2,6 +2,7 @@ package com.example.pasteleriaapp.viewmodel
 
 import android.app.Application
 import android.net.Uri
+import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -78,10 +79,10 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     fun onUserLoaded(usuario: Usuario) {
         _estado.update { it.copy(
             nombre = usuario.nombre,
-            apellidos = usuario.apellidos ?: "",
+            apellidos = usuario.apellidos,
             correo = usuario.correo,
-            direccion = usuario.direccion ?: "",
-            fechaNacimiento = usuario.fechaNacimiento ?: "",
+            direccion = usuario.direccion,
+            fechaNacimiento = usuario.fechaNacimiento,
             profilePictureUri = usuario.profilePictureUri
         ) }
     }
@@ -97,7 +98,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     password = _estado.value.contrasena,
                     nombres = _estado.value.nombre,
                     apellidos = _estado.value.apellidos,
-                    fechaNac = convertirAFormatoISO(_estado.value.fechaNacimiento),
+                    fechaNac = convertirDeFormatoISO(_estado.value.fechaNacimiento),
                     direccion = estado.value.direccion
 
                 )
@@ -108,9 +109,11 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     if (resultadoRemoto.isSuccess) {
                         val nuevoUsuarioLocal = Usuario(
                             nombre = registroData.nombres,
+                            apellidos = registroData.apellidos, // Asegurar que apellidos se guarda
                             correo = registroData.username,
                             contrasena = registroData.password,
                             direccion = _estado.value.direccion,
+                            fechaNacimiento = _estado.value.fechaNacimiento, // Asegurar que fechaNac se guarda
                             profilePictureUri = null
                         )
 
@@ -153,33 +156,84 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                         val token = loginResponse.token
 
                         authTokenManager.saveAuthData(token, loginResponse.role, email)
-                        var usuarioAutenticado = usuarioRepository.findUserByEmail(email)
 
-                        if (usuarioAutenticado == null) {
-                            usuarioAutenticado = Usuario(
-                                nombre = "Usuario Autenticado",
-                                correo = email,
+                        val profileResult = usuarioRepository.fetchProfileRemoto()
+
+                        if (profileResult.isSuccess) {
+                            val profile = profileResult.getOrNull()!!
+
+                            val direccionAPI = profile.direccion.trim()
+
+                            // 1. Crear usuarioBase con datos de API (Apellidos y Fecha Nacimiento ahora funcionan)
+                            val usuarioBase = Usuario(
+                                nombre = profile.nombres.trim(),
+                                apellidos = profile.apellidos.trim(),
+                                correo = profile.username.trim(),
                                 contrasena = contrasena,
-                                direccion = estadoActual.direccion,
+                                direccion = direccionAPI,
+                                fechaNacimiento = convertirDeFormatoISO(profile.fechaNac).trim(),
                                 profilePictureUri = null
                             )
-                            usuarioRepository.registrarUsuario(usuarioAutenticado)
-                        }
 
-                        onUserLoaded(usuarioAutenticado)
-                        onResult(usuarioAutenticado, token)
+                            val usuarioExistente = usuarioRepository.findUserByEmail(email)
+
+                            val usuarioFinal = if (usuarioExistente == null) {
+                                // 2. Si NO EXISTE EN ROOM (Inserción Post-Desinstalación)
+
+                                val direccionInicial = if (estadoActual.direccion.isNotBlank()) {
+                                    estadoActual.direccion
+                                } else {
+                                    direccionAPI
+                                }
+
+                                val usuarioParaInsertar = usuarioBase.copy(
+                                    direccion = direccionInicial
+                                )
+
+                                usuarioRepository.registrarUsuario(usuarioParaInsertar)
+                                usuarioParaInsertar
+                            } else {
+                                // 3. Si EXISTE EN ROOM (Preservación)
+
+                                // ⭐ NUEVA LÓGICA: Preservamos el valor de Room SOLO si la API devuelve algo que no es útil. ⭐
+                                // Si la API devuelve un valor válido (e.g., "sucasa"), lo usamos para asegurar la actualización.
+
+                                val direccionFinal = if (direccionAPI.isBlank() || direccionAPI == "string") {
+                                    // La API falló o dio un valor no deseado, mantenemos el valor local (ej. "sucasa" si ya estaba).
+                                    usuarioExistente.direccion
+                                } else {
+                                    // La API devolvió un valor válido (es la fuente de verdad del servidor), lo usamos.
+                                    direccionAPI
+                                }
+
+                                val usuarioParaGuardar = usuarioBase.copy(
+                                    id = usuarioExistente.id,
+                                    direccion = direccionFinal, // Usamos la dirección determinada por la lógica
+                                    profilePictureUri = usuarioExistente.profilePictureUri ?: usuarioBase.profilePictureUri
+                                )
+
+                                usuarioRepository.updateUser(usuarioParaGuardar)
+                                usuarioParaGuardar
+                            }
+
+                            onUserLoaded(usuarioFinal)
+                            onResult(usuarioFinal, token)
+
+                        } else {
+                            val mensajeErrorPerfil = profileResult.exceptionOrNull()?.message ?: "Error al obtener datos del perfil."
+                            _estado.update { it.copy(errores = it.errores.copy(correo = "Login exitoso, pero error al cargar datos: $mensajeErrorPerfil")) }
+                            onResult(null, null)
+                        }
 
                     } else {
+                        // ... (Manejo de errores del login)
                         val exception = resultadoRemoto.exceptionOrNull()
                         val mensajeOriginal = exception?.message ?: "Fallo al iniciar sesión."
-
-                        // ⭐ COMPROBACIÓN CLAVE: Buscamos el mensaje único del Repository ⭐
                         val mensajeFinal = if (mensajeOriginal == "FALLO_CREDENCIALES_INVALIDAS") {
-                            "Correo electrónico o contraseña incorrectos." // Mensaje amigable
+                            "Correo electrónico o contraseña incorrectos."
                         } else {
-                            mensajeOriginal // Muestra la red o el error del servidor (si no es 401/403)
+                            mensajeOriginal
                         }
-
                         _estado.update { it.copy(errores = it.errores.copy(correo = mensajeFinal)) }
                         onResult(null, null)
                     }
@@ -201,8 +255,25 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     }
 
     suspend fun getSavedEmail(): String? {
-        // Necesitas el flujo de userEmail definido en AuthTokenManager
         return authTokenManager.userEmail.first()
+    }
+
+
+    fun loadCurrentUserProfile() {
+        viewModelScope.launch {
+            val email = _estado.value.correo.trim()
+
+            if (email.isNotBlank()) {
+                val usuario = usuarioRepository.findUserByEmail(email)
+                usuario?.let { onUserLoaded(it) }
+            } else {
+                val savedEmail = authTokenManager.userEmail.first()
+                if (!savedEmail.isNullOrBlank()) {
+                    val usuario = usuarioRepository.findUserByEmail(savedEmail)
+                    usuario?.let { onUserLoaded(it) }
+                }
+            }
+        }
     }
 
     // --- Lógica de Perfil y Logout ---
@@ -230,17 +301,15 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
     /**
      * Función para guardar los cambios de edición del perfil local y remotamente.
-     * Incluye lógica condicional para actualizar la contraseña.
      */
     fun saveChanges(onUserUpdated: (Usuario) -> Unit) {
-        if (estaValidadoElPerfil()) { // Usamos la validación que ignora contraseña vacía
+        if (estaValidadoElPerfil()) {
             viewModelScope.launch {
                 val estadoActual = _estado.value
                 val usuarioLocal = usuarioRepository.findUserByEmail(estadoActual.correo)
 
                 if (usuarioLocal == null) return@launch
 
-                // ⭐ Lógica CLAVE: Incluir la contraseña SOLO si el campo NO está vacío ⭐
                 val newPassword = if (estadoActual.contrasena.isNotEmpty()) {
                     estadoActual.contrasena
                 } else {
@@ -249,10 +318,9 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
                 // Creamos el objeto de datos para la API
                 val updateData = UpdateData(
-                    // ⭐ CORRECCIÓN MANTENIDA: Usamos 'nombre' (singular) para coincidir con Swagger ⭐
                     nombre = estadoActual.nombre,
                     apellidos = estadoActual.apellidos,
-                    fechaNac = convertirAFormatoISO(estadoActual.fechaNacimiento),
+                    fechaNac = convertirDeFormatoISO(estadoActual.fechaNacimiento),
                     direccion = estadoActual.direccion,
                     profilePictureUri = usuarioLocal.profilePictureUri,
                     newPassword = newPassword
@@ -269,15 +337,14 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                             apellidos = estadoActual.apellidos,
                             direccion = estadoActual.direccion,
                             fechaNacimiento = estadoActual.fechaNacimiento,
-                            // Si newPassword tiene valor, usamos ese valor. Si es null, conservamos la contraseña local anterior.
                             contrasena = newPassword ?: usuarioLocal.contrasena
                         )
-                        usuarioRepository.updateUser(usuarioActualizadoLocal) // Corregido el nombre de la función local
+                        usuarioRepository.updateUser(usuarioActualizadoLocal)
 
                         // Limpiamos el campo de contraseña después de guardar, para que no se reenvíe al cancelar/guardar.
                         _estado.update { it.copy(contrasena = "") }
 
-                        onUserUpdated(usuarioActualizadoLocal) // Notifica al MainViewModel y refresca la UI
+                        onUserUpdated(usuarioActualizadoLocal)
                     } else {
                         val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Error desconocido al actualizar."
                         _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
@@ -310,14 +377,14 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
                     // Limpiar la sesión
                     authTokenManager.clearAuthData()
-                    _estado.update { UsuarioUiState() } // Resetear el estado de la UI
+                    _estado.update { UsuarioUiState() }
 
                     // ⭐ CLAVE: EMITIR EL EVENTO DE NAVEGACIÓN A HOME (Modo Invitado) ⭐
                     _navigationEvents.send(
                         NavigationEvent.NavigateTo(
                             route = AppRoute.Home.route,
                             popUpTo = AppRoute.Home.route,
-                            inclusive = true // Elimina todo el historial y te deja en Home
+                            inclusive = true
                         )
                     )
 
@@ -325,13 +392,13 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                 } else {
                     // 4. FALLO: MOSTRAR MENSAJE DE ERROR DEL SERVIDOR
                     val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Fallo desconocido al eliminar la cuenta."
-                    _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) } // Muestra error en el campo correo
+                    _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
                     onResult(false, mensajeError)
                 }
             } catch (e: Exception) {
                 // 5. ERROR DE RED
                 val mensajeError = "Error de red: No se pudo contactar al servidor para eliminar la cuenta."
-                _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) } // Muestra error en el campo correo
+                _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
                 onResult(false, mensajeError)
             }
         }
@@ -384,7 +451,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
             errores.correo,
             errores.fechaNacimiento,
             errores.direccion,
-            errores.contrasena // ⭐ Incluir error de contraseña aquí ⭐
+            errores.contrasena
         ).isNotEmpty()
 
         // Actualizar solo los errores relevantes en el estado
@@ -396,7 +463,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     correo = errores.correo,
                     fechaNacimiento = errores.fechaNacimiento,
                     direccion = errores.direccion,
-                    contrasena = errores.contrasena, // ⭐ Actualizar el error de contraseña ⭐
+                    contrasena = errores.contrasena,
                     terminos = null
                 )
             )
@@ -455,12 +522,18 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     }
 
     // --- FUNCIÓN DE UTILIDAD ---
-    private fun convertirAFormatoISO(fechaDeEntrada: String): String {
-        val partes = fechaDeEntrada.split("-")
-        return if (partes.size == 3 && partes[2].length == 4) {
-            "${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}"
-        } else {
-            fechaDeEntrada
+    private fun convertirDeFormatoISO(fechaISO: String): String {
+        // Si la fecha coincide con el patrón YYYY-MM-DD (4º carácter es guion), entonces la invertimos.
+        if (fechaISO.length >= 10 && fechaISO[4] == '-') {
+            val partes = fechaISO.split("-")
+
+            // Verificamos que sea YYYY-MM-DD antes de invertir a DD-MM-AAAA
+            if (partes.size == 3 && partes[0].length == 4) {
+                return "${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0]}" // D-M-Y
+            }
         }
+
+        // Si no es el formato ISO (YYYY-MM-DD), lo devolvemos sin cambios (ej: 05-05-2020)
+        return fechaISO
     }
 }

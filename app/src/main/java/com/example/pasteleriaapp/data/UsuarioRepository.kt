@@ -6,6 +6,7 @@ import com.example.pasteleriaapp.data.dao.UsuarioDao
 import com.example.pasteleriaapp.model.InicioSesion
 import com.example.pasteleriaapp.model.LoginResponse
 import com.example.pasteleriaapp.model.MensajeRespuesta // ⭐ Importe agregado
+import com.example.pasteleriaapp.model.ProfileResponse
 import com.example.pasteleriaapp.model.RegistroData
 import com.example.pasteleriaapp.model.Usuario
 import java.io.IOException
@@ -128,6 +129,24 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
             } else {
                 Result.failure(Exception("Error inesperado en el procesamiento de la respuesta: ${e.message}"))
             }
+        }
+    }
+
+    suspend fun fetchProfileRemoto(): Result<ProfileResponse> {
+        return try {
+            val response = apiService.getProfile()
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                // Si el error es 401 (Unauthorized), significa que el token falló.
+                val mensajeError = "Error al cargar perfil. Código: ${response.code()}. Detalle: ${errorBody ?: "Error desconocido"}"
+                Result.failure(Exception(mensajeError))
+            }
+        } catch (e: Exception) {
+            // ⭐ AÑADIMOS EL DETALLE DE LA EXCEPCIÓN DE RED ⭐
+            Result.failure(Exception("Error de red al cargar el perfil: ${e.message}"))
         }
     }
 }

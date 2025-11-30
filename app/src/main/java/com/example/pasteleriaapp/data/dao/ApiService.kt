@@ -5,6 +5,7 @@ import com.example.pasteleriaapp.model.InicioSesion
 import com.example.pasteleriaapp.model.LoginResponse
 import com.example.pasteleriaapp.model.MensajeRespuesta
 import com.example.pasteleriaapp.model.Product
+import com.example.pasteleriaapp.model.ProfileResponse
 import com.example.pasteleriaapp.model.RegistroData
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -41,6 +42,9 @@ interface ApiService {
 
     @DELETE("auth/delete")
     suspend fun deleteUser(): Response<MensajeRespuesta>
+
+    @GET("auth/me")
+    suspend fun getProfile(): Response<ProfileResponse>
 
 
 }

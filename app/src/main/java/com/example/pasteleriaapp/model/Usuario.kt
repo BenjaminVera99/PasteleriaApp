@@ -11,11 +11,11 @@ import androidx.room.PrimaryKey
 data class Usuario(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val nombre: String,
-    val correo: String,
-    val contrasena: String,
-    val direccion: String,
+    val nombre: String = "",
+    val correo: String = "",
+    val contrasena: String = "",
     val profilePictureUri: String? = null,
-    val fechaNacimiento: String? = null,
-    val apellidos: String? = null
+    val direccion: String = "",
+    val apellidos: String = "",
+    val fechaNacimiento: String = "",
 )

@@ -57,10 +57,8 @@ fun ProfileScreen(
 
 
     // Cargar los datos del usuario actual al ViewModel cuando la pantalla se carga
-    LaunchedEffect(currentUser) {
-        currentUser?.let {
-            usuarioViewModel.onUserLoaded(it)
-        }
+    LaunchedEffect(Unit) {
+        usuarioViewModel.loadCurrentUserProfile()
     }
 
     // --- Launchers y Permisos (Código completo) ---
@@ -275,14 +273,22 @@ fun ProfileScreen(
         )
 
         // 4. Dirección
-        ProfileField(
-            isEditing = isEditing,
-            label = "Dirección",
-            value = userState.direccion,
-            onValueChange = usuarioViewModel::onDireccionChange,
-            error = userState.errores.direccion,
-            placeholder = "No especificado"
-        )
+        if (isEditing) {
+            ProfileField(
+                isEditing = true,
+                label = "Dirección",
+                value = userState.direccion,
+                onValueChange = usuarioViewModel::onDireccionChange,
+                error = userState.errores.direccion,
+                placeholder = "No especificado"
+            )
+        } else {
+            // ⭐ CORRECCIÓN: Usamos ProfileInfoRow DIRECTAMENTE (como la fecha)
+            ProfileInfoRow(
+                label = "Dirección",
+                value = userState.direccion.ifBlank { "No especificado" }
+            )
+        }
 
         // 5. Fecha de Nacimiento (con DatePicker)
         if (isEditing) {
@@ -378,9 +384,16 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileInfoRow(label: String, value: String) {
+    // ⭐ MODIFICACIÓN CLAVE: Manejo de "string" y "blank" ⭐
+    val displayValue = if (value.isBlank() || value.equals("string", ignoreCase = true)) {
+        "No especificado"
+    } else {
+        value
+    }
+
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(text = label, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
-        Text(text = value, style = MaterialTheme.typography.bodyLarge)
+        Text(text = displayValue, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -411,9 +424,10 @@ private fun ProfileField(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
         )
     } else {
+        val displayValue = value.ifBlank { "No especificado" }
         ProfileInfoRow(
             label = label,
-            value = value.ifBlank { placeholder ?: "No especificado" }
+            value = displayValue
         )
     }
 }
