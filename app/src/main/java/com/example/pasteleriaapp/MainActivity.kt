@@ -33,11 +33,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navOptions // ⭐ Necesario para popUpTo en NavigationEvent
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import com.example.pasteleriaapp.data.AppDatabase // Necesario para el Repository
-import com.example.pasteleriaapp.data.UsuarioRepository // Necesario para el Repository
-import com.example.pasteleriaapp.data.dao.RetrofitInstance // Inicialización y API Service
+import com.example.pasteleriaapp.data.AppDatabase
+import com.example.pasteleriaapp.data.UsuarioRepository
+import com.example.pasteleriaapp.data.dao.RetrofitInstance
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
 import com.example.pasteleriaapp.ui.components.MainBottomBar
@@ -49,7 +50,7 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.MainViewModelFactory
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModelFactory
-import kotlinx.coroutines.runBlocking // Para esperar la lectura del token
+import kotlinx.coroutines.runBlocking
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
@@ -58,7 +59,6 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
     private val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
     private val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
 
-    // Necesitas el repositorio para buscar al usuario localmente
     private val usuarioRepository: UsuarioRepository by lazy {
         val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
         UsuarioRepository(usuarioDao, RetrofitInstance.api)
@@ -67,10 +67,8 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inicializa Retrofit (necesario para el Interceptor y Repositorios)
         RetrofitInstance.initialize(applicationContext)
 
-        // Código de limpieza de caché
         val appImageLoader = AppImageLoader(application)
         appImageLoader.clearCache()
 
@@ -85,13 +83,11 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
             val savedEmail = usuarioViewModel.getSavedEmail()
 
             if (!token.isNullOrEmpty() && !savedEmail.isNullOrEmpty()) {
-                // Si token Y email existen, intenta cargar el usuario desde Room
                 val usuarioPersistente = usuarioRepository.findUserByEmail(savedEmail)
 
                 if (usuarioPersistente != null) {
-                    // Cargar la sesión en el MainViewModel (configura isLoggedIn, _currentUser, carrito, etc.)
                     mainViewModel.initializeUserSession(usuarioPersistente)
-                    startRoute = AppRoute.Home.route // Ir a la pantalla principal
+                    startRoute = AppRoute.Home.route
                 }
             }
         }
@@ -104,7 +100,9 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                 val currentRoute = navBackStackEntry?.destination?.route
                 val snackbarHostState = remember { SnackbarHostState() }
 
-                // Manejo de eventos de navegación del ViewModel
+                // --- MANEJO DE EVENTOS DE NAVEGACIÓN ---
+
+                // Bloque 1: Manejo de eventos del MainViewModel (Lógica existente)
                 LaunchedEffect(Unit) {
                     mainViewModel.navEvents.collect { event ->
                         when (event) {
@@ -121,6 +119,33 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                         }
                     }
                 }
+
+                // ⭐ Bloque 2: Manejo de eventos del UsuarioViewModel (NUEVA LÓGICA) ⭐
+                // Captura el evento de eliminación de cuenta y navega a Home/Invitado
+                LaunchedEffect(Unit) {
+                    usuarioViewModel.navigationEvents.collect { event ->
+                        when (event) {
+                            is NavigationEvent.NavigateTo -> {
+                                navController.navigate(
+                                    route = event.route,
+                                    navOptions = navOptions { // Usamos navOptions para aplicar popUpTo
+                                        event.popUpTo?.let { popUpRoute ->
+                                            popUpTo(popUpRoute) {
+                                                // popUpTo(Home) con inclusive = true, borra todo el historial
+                                                inclusive = event.inclusive
+                                            }
+                                        }
+                                        launchSingleTop = event.singleTop
+                                    }
+                                )
+                            }
+                            NavigationEvent.PopBackStack -> navController.popBackStack()
+                            NavigationEvent.NavigateUp -> navController.navigateUp()
+                        }
+                    }
+                }
+                // --- FIN MANEJO DE EVENTOS ---
+
 
                 Scaffold(
                     snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -163,7 +188,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                         composable(AppRoute.Login.route) { LoginScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
                         composable(AppRoute.Register.route) { RegistroScreen(usuarioViewModel = usuarioViewModel, mainViewModel = mainViewModel) }
                         composable(AppRoute.Home.route) { HomeScreen(viewModel = mainViewModel, snackbarHostState = snackbarHostState) }
-                        composable(AppRoute.Profile.route) { ProfileScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
+                        composable(AppRoute.Profile.route) { ProfileScreen(navController = navController,mainViewModel = mainViewModel,usuarioViewModel = usuarioViewModel) }
                         composable(AppRoute.Cart.route) { CartScreen(mainViewModel = mainViewModel) }
                         composable(AppRoute.Checkout.route) { CheckoutScreen(mainViewModel = mainViewModel, usuarioViewModel = usuarioViewModel) }
                         composable(AppRoute.OrderHistory.route) { OrderHistoryScreen(mainViewModel = mainViewModel) }

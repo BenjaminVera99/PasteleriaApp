@@ -13,5 +13,7 @@ data class RegistroData(
 
     val apellidos: String,
 
-    val fechaNac: String
+    val fechaNac: String,
+
+    val direccion: String
 )

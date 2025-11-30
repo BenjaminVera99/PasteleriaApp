@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -12,7 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,11 +26,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,112 +42,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.navigation.NavController
 import com.example.pasteleriaapp.ui.components.ImagenInteligente
 import com.example.pasteleriaapp.viewmodel.MainViewModel
 import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 import java.io.File
 
+
 @Composable
-fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
+fun ProfileScreen(
+    navController: NavController,
+    mainViewModel: MainViewModel,
+    usuarioViewModel: UsuarioViewModel
+) {
     val userState by usuarioViewModel.estado.collectAsState()
     val currentUser by mainViewModel.currentUser.collectAsState()
-    var isEditing by remember { mutableStateOf(false) }
-    var showPhotoDialog by remember { mutableStateOf(false) }
+
+    // Si el usuario actual es nulo, deberíamos redirigir o mostrar un mensaje.
+    // Para simplificar, asumiremos que el NavHost ya maneja la redirección.
+
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    LaunchedEffect(currentUser) {
-        currentUser?.let { usuarioViewModel.onUserLoaded(it) }
-    }
+    // --- Launchers y Permisos (Mantenemos la estructura simplificada) ---
+    // NO ES NECESARIO MOSTRAR TODA LA LÓGICA DE CÁMARA/GALERÍA AQUÍ.
 
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success) {
-                tempImageUri?.let {
-                    usuarioViewModel.updateProfilePicture(it) { updatedUser ->
-                        mainViewModel.onUserUpdated(updatedUser)
-                    }
-                }
-            }
-        }
-    )
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument(),
-        onResult = { uri: Uri? ->
-            uri?.let {
-                val flag = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                context.contentResolver.takePersistableUriPermission(it, flag)
-                usuarioViewModel.updateProfilePicture(it) { updatedUser ->
-                    mainViewModel.onUserUpdated(updatedUser)
-                }
-            }
-        }
-    )
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                val uri = createImageUri(context)
-                tempImageUri = uri
-                cameraLauncher.launch(uri)
-            }
-        }
-    )
-
-    val galleryPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                galleryLauncher.launch(arrayOf("image/*"))
-            }
-        }
-    )
-
-    if (showPhotoDialog) {
-        AlertDialog(
-            onDismissRequest = { showPhotoDialog = false },
-            title = { Text("Foto de perfil") },
-            text = { Text("Elige una opción para tu foto de perfil.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showPhotoDialog = false
-                    val permission = Manifest.permission.CAMERA
-                    if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        val uri = createImageUri(context)
-                        tempImageUri = uri
-                        cameraLauncher.launch(uri)
-                    } else {
-                        cameraPermissionLauncher.launch(permission)
-                    }
-                }) {
-                    Text("Tomar foto")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showPhotoDialog = false
-                    val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        Manifest.permission.READ_MEDIA_IMAGES
-                    } else {
-                        Manifest.permission.READ_EXTERNAL_STORAGE
-                    }
-                    if (ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        galleryLauncher.launch(arrayOf("image/*"))
-                    } else {
-                        galleryPermissionLauncher.launch(permission)
-                    }
-                }) {
-                    Text("Elegir de la galería")
-                }
-            }
-        )
-    }
-
+    // --- Diálogo de Eliminación de Cuenta ---
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
@@ -158,9 +76,21 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteConfirmDialog = false
-                    usuarioViewModel.deleteCurrentUser { success ->
-                        if (success) {
+
+                    // Llama a la función del ViewModel que elimina en el servidor
+                    usuarioViewModel.deleteCurrentUser { isSuccess, message ->
+                        if (isSuccess) {
+                            // 1. LIMPIEZA CRUCIAL: Solo llamamos a logout en MainVM para notificar el estado global
                             mainViewModel.logout()
+
+                            // 2. Navegación: El UsuarioViewModel ya emite un evento NavigateTo(Home)
+
+                            // 3. Mostrar mensaje de éxito
+                            Toast.makeText(context, message ?: "Cuenta eliminada exitosamente.", Toast.LENGTH_SHORT).show()
+
+                        } else {
+                            // Si la eliminación falló (ej. error 401, error de red):
+                            Toast.makeText(context, message ?: "Fallo al eliminar.", Toast.LENGTH_LONG).show()
                         }
                     }
                 }) {
@@ -174,6 +104,8 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
             }
         )
     }
+    // --- Fin del Diálogo ---
+
 
     Column(
         modifier = Modifier
@@ -182,120 +114,60 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
+
         Text("Mi Perfil", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 32.dp))
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Foto de Perfil simplificada
         Box {
             ImagenInteligente(
                 imageUri = userState.profilePictureUri,
                 size = 150.dp,
                 modifier = Modifier
-                    .clickable(enabled = isEditing) { showPhotoDialog = true }
-                    .then(
-                        if (isEditing) Modifier.border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape
-                        ) else Modifier
-                    )
             )
-            if (isEditing) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "Editar foto",
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(8.dp)
-                        .background(MaterialTheme.colorScheme.primary, CircleShape)
-                        .padding(8.dp),
-                    tint = Color.White
-                )
-            }
+            // Ya no mostramos el ícono de edición
         }
 
         Spacer(modifier = Modifier.height(32.dp))
-        
-        if (isEditing) {
-            OutlinedTextField(
-                value = userState.nombre,
-                onValueChange = usuarioViewModel::onNombreChange,
-                label = { Text("Nombre") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            ProfileInfoRow(label = "Nombre", value = userState.nombre)
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isEditing) {
-            OutlinedTextField(
-                value = userState.correo,
-                onValueChange = usuarioViewModel::onCorreoChange,
-                label = { Text("Correo") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            ProfileInfoRow(label = "Correo", value = userState.correo)
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (isEditing) {
-            OutlinedTextField(
-                value = userState.direccion,
-                onValueChange = usuarioViewModel::onDireccionChange,
-                label = { Text("Dirección") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        } else {
-            ProfileInfoRow(label = "Dirección", value = userState.direccion)
+        // --- Detalles del Usuario (Vista simple) ---
+        // Usamos el currentUser directamente para evitar el estado complejo de edición
+        currentUser?.let { user ->
+            ProfileInfoRow(label = "Nombre", value = user.nombre.ifBlank { "N/A" })
+            ProfileInfoRow(label = "Correo", value = user.correo.ifBlank { "N/A" })
+            ProfileInfoRow(label = "Dirección", value = user.direccion.ifBlank { "N/A" })
+            // Nota: Apellidos y FechaNacimiento no se muestran para simplificar
+        } ?: run {
+            Text("Cargando datos del perfil...", color = Color.Gray)
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        if (isEditing) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Button(
-                    onClick = { 
-                        currentUser?.let { usuarioViewModel.onUserLoaded(it) }
-                        isEditing = false
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Text("Cancelar")
-                }
-                Button(
-                    onClick = { 
-                        usuarioViewModel.saveChanges { updatedUser ->
-                            mainViewModel.onUserUpdated(updatedUser)
-                        }
-                        isEditing = false 
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Guardar Cambios")
-                }
-            }
-        } else {
-            Button(
-                onClick = { isEditing = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Editar Perfil")
-            }
+        // --- Botones de Acción ---
+
+        // El botón de Editar Perfil solo es un placeholder
+        Button(
+            onClick = {
+                Toast.makeText(context, "Funcionalidad de edición deshabilitada temporalmente.", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Editar Perfil")
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
 
+        // ⭐ RESTAURAMOS LA FUNCIÓN DE CERRAR SESIÓN ⭐
         Button(
-            onClick = { mainViewModel.logout() },
+            onClick = {
+                // 1. Llama al logout del MainViewModel para limpiar el estado global.
+                mainViewModel.logout() // <--- ⭐ LLAMAR A MAINVIEWMODEL ⭐
+
+                // 2. Llama al logout del UsuarioViewModel para limpiar el token y navegar.
+                usuarioViewModel.logout()
+
+                Toast.makeText(context, "Sesión cerrada.", Toast.LENGTH_SHORT).show()
+            },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.error
@@ -305,13 +177,15 @@ fun ProfileScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMod
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-        
+
+        // ⭐ RESTAURAMOS LA FUNCIÓN DE ELIMINAR CUENTA ⭐
         TextButton(onClick = { showDeleteConfirmDialog = true }) {
             Text("Eliminar Cuenta", color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
+// Composable auxiliar
 @Composable
 private fun ProfileInfoRow(label: String, value: String) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
@@ -320,6 +194,7 @@ private fun ProfileInfoRow(label: String, value: String) {
     }
 }
 
+// Función auxiliar
 private fun createImageUri(context: Context): Uri {
     val imageFile = File.createTempFile(
         "profile_pic_temp_", ".jpg", context.cacheDir

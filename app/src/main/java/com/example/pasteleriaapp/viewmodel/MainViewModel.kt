@@ -131,6 +131,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _dbCartItems.value = emptyList()
         _orders.value = emptyList()
         _guestCartItems.value = emptyList()
+        // Navegación que podría dejar historial indeseado
         navigateTo(AppRoute.Welcome.route, popUpTo = AppRoute.Home.route, inclusive = true)
     }
 
@@ -247,6 +248,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { userId ->
                 viewModelScope.launch {
+                    // ... (Lógica para usuario logueado)
                     cartRepository.decreaseQuantity(
                         userId.toLong(),
                         productId
@@ -255,10 +257,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         } else {
             _guestCartItems.update { cart ->
-                cart.map {
-                    if (it.product.id == productId) it.copy(
-                        quantity = it.quantity + 1
-                    ) else it
+                cart.mapNotNull {
+                    if (it.product.id == productId) {
+                        // ⭐ CORRECCIÓN CLAVE: Disminuir la cantidad en 1 ⭐
+                        if (it.quantity > 1) {
+                            it.copy(quantity = it.quantity - 1)
+                        } else {
+                            // Si la cantidad es 1, eliminar el item (mapNotNull lo maneja)
+                            null
+                        }
+                    } else {
+                        it
+                    }
                 }
             }
         }

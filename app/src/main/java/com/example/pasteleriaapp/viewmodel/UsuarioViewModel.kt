@@ -14,10 +14,14 @@ import com.example.pasteleriaapp.model.Usuario
 import com.example.pasteleriaapp.model.UsuarioErrores
 import com.example.pasteleriaapp.model.UsuarioUiState
 import com.example.pasteleriaapp.model.InicioSesion
+import com.example.pasteleriaapp.navigation.AppRoute // ⭐ Importar AppRoute
+import com.example.pasteleriaapp.navigation.NavigationEvent
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.first // Necesario para checkAuthStatus
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class UsuarioViewModel(application: Application): AndroidViewModel(application) {
@@ -28,6 +32,9 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
 
     private val _estado= MutableStateFlow(UsuarioUiState())
     val estado: StateFlow<UsuarioUiState> = _estado
+
+    private val _navigationEvents = Channel<NavigationEvent>()
+    val navigationEvents = _navigationEvents.receiveAsFlow()
 
     init {
         val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
@@ -67,8 +74,10 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     fun onUserLoaded(usuario: Usuario) {
         _estado.update { it.copy(
             nombre = usuario.nombre,
+            apellidos = usuario.apellidos ?: "",
             correo = usuario.correo,
-            direccion = usuario.direccion,
+            direccion = usuario.direccion ?: "",
+            fechaNacimiento = usuario.fechaNacimiento ?: "",
             profilePictureUri = usuario.profilePictureUri
         ) }
     }
@@ -84,7 +93,9 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     password = _estado.value.contrasena,
                     nombres = _estado.value.nombre,
                     apellidos = _estado.value.apellidos,
-                    fechaNac = convertirAFormatoISO(_estado.value.fechaNacimiento)
+                    fechaNac = convertirAFormatoISO(_estado.value.fechaNacimiento),
+                    direccion = estado.value.direccion
+
                 )
 
                 try {
@@ -185,15 +196,47 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     fun updateProfilePicture(imageUri: Uri, onUserUpdated: (Usuario) -> Unit) { /* ... */ }
     fun saveChanges(onUserUpdated: (Usuario) -> Unit) { /* ... */ }
 
-    fun deleteCurrentUser(onResult: (Boolean) -> Unit) {
+    fun deleteCurrentUser(onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
             val userEmail = _estado.value.correo
-            if (userEmail.isNotBlank()) {
-                usuarioRepository.deleteUserByEmail(userEmail)
-                authTokenManager.clearAuthData()
-                onResult(true)
-            } else {
-                onResult(false)
+
+            // 1. Verificación básica (si el email es nulo, no se puede eliminar)
+            if (userEmail.isBlank()) {
+                onResult(false, "El correo del usuario no está cargado. Inicia sesión primero.")
+                return@launch
+            }
+
+            try {
+                // ⭐ 2. LLAMADA A LA API REMOTA PARA ELIMINAR CUENTA ⭐
+                val resultadoRemoto = usuarioRepository.deleteUserRemoto()
+
+                if (resultadoRemoto.isSuccess) {
+                    // 3. ÉXITO: ELIMINAR DATOS LOCALES Y LIMPIAR SESIÓN
+                    usuarioRepository.deleteUserByEmail(userEmail)
+
+                    // Limpiar la sesión
+                    authTokenManager.clearAuthData()
+                    _estado.update { UsuarioUiState() } // Resetear el estado de la UI
+
+                    // ⭐ CLAVE: EMITIR EL EVENTO DE NAVEGACIÓN A HOME (Modo Invitado) ⭐
+                    _navigationEvents.send(
+                        NavigationEvent.NavigateTo(
+                            route = AppRoute.Home.route,
+                            popUpTo = AppRoute.Home.route,
+                            inclusive = true // Elimina todo el historial y te deja en Home
+                        )
+                    )
+
+                    onResult(true, "Tu cuenta ha sido eliminada exitosamente.")
+                } else {
+                    // 4. FALLO: MOSTRAR MENSAJE DE ERROR DEL SERVIDOR
+                    val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Fallo desconocido al eliminar la cuenta."
+                    onResult(false, mensajeError)
+                }
+            } catch (e: Exception) {
+                // 5. ERROR DE RED
+                val mensajeError = "Error de red: No se pudo contactar al servidor para eliminar la cuenta."
+                onResult(false, mensajeError)
             }
         }
     }
@@ -202,6 +245,15 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         viewModelScope.launch {
             authTokenManager.clearAuthData()
             _estado.update { UsuarioUiState() }
+
+            // ⭐ OPCIONAL: Si el logout también debe llevar a Home:
+            _navigationEvents.send(
+                NavigationEvent.NavigateTo(
+                    route = AppRoute.Home.route,
+                    popUpTo = AppRoute.Home.route,
+                    inclusive = true
+                )
+            )
         }
     }
 

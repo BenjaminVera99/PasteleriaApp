@@ -11,6 +11,7 @@ import retrofit2.http.Path
 import retrofit2.http.POST
 import retrofit2.http.Body
 import retrofit2.Response
+import retrofit2.http.DELETE
 import retrofit2.http.PUT
 
 interface ApiService {
@@ -38,5 +39,8 @@ interface ApiService {
         @Body updateData: UpdateData
     ): Response<Map<String, Any>>
 
-    // Nota: Las demás rutas (como /api/cart) seguirían el mismo patrón.
+    @DELETE("auth/delete")
+    suspend fun deleteUser(): Response<MensajeRespuesta>
+
+
 }
