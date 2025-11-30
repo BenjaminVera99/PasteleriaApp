@@ -10,9 +10,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+// ⭐ NUEVOS IMPORTS para Visibilidad ⭐
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +33,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+// ⭐ IMPORTS DE TEXTO MODIFICADOS ⭐
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.navigation.AppRoute // 🔑 Importación necesaria para la navegación
 import com.example.pasteleriaapp.viewmodel.MainViewModel
@@ -40,7 +47,10 @@ import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewModel) {
     val estado by usuarioViewModel.estado.collectAsState()
 
-    // Usamos rememberScrollState para permitir el scroll si la pantalla es pequeña
+    // Variables de estado necesarias para la visibilidad
+    val isPasswordVisible = estado.isPasswordVisible
+    val passwordError = estado.errores.contrasena
+
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -99,18 +109,37 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     label = { Text("Email") },
                     isError = estado.errores.correo != null,
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                     supportingText = { estado.errores.correo?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // --- CAMPO CONTRASEÑA ---
+                // --- CAMPO CONTRASEÑA MODIFICADO ---
                 OutlinedTextField(
                     value = estado.contrasena,
                     onValueChange = usuarioViewModel::onContrasenaChange,
                     label = { Text("Contraseña") },
-                    isError = estado.errores.contrasena != null,
-                    visualTransformation = PasswordVisualTransformation(),
-                    supportingText = { estado.errores.contrasena?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    isError = passwordError != null,
+
+                    // ⭐ CLAVE 1: Transformación visual condicional ⭐
+                    visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+
+                    // ⭐ CLAVE 2: Ícono interactivo para visibilidad ⭐
+                    trailingIcon = {
+                        val image = if (isPasswordVisible)
+                            Icons.Filled.Visibility
+                        else
+                            Icons.Filled.VisibilityOff
+
+                        val description = if (isPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+
+                        IconButton(onClick = { usuarioViewModel.togglePasswordVisibility() }) {
+                            Icon(imageVector = image, contentDescription = description)
+                        }
+                    },
+
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), // Teclado de contraseña
+                    supportingText = { passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) } },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -160,16 +189,12 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
 
                 // --- BOTÓN REGISTRAR (Lógica Remota) ---
                 Button(
-                    // 🔑 LÓGICA DE REGISTRO Y NAVEGACIÓN
                     onClick = {
                         usuarioViewModel.registrarUsuario { usuarioRegistrado ->
                             if (usuarioRegistrado != null) {
-                                // ÉXITO: Navegar al Login para que el usuario ingrese
-                                // No llamamos a mainViewModel.login aquí, ya que el usuario debe loguearse primero.
+                                // ÉXITO: Navegar al Login
                                 mainViewModel.navigateTo(AppRoute.Login.route)
                             }
-                            // Si falla, el error se muestra automáticamente en el campo de Email/Correo
-                            // gracias a que el ViewModel actualiza el estado.
                         }
                     },
                     modifier = Modifier.fillMaxWidth()

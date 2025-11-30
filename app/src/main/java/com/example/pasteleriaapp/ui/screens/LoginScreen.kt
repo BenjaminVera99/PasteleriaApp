@@ -10,8 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+// ⭐ NUEVOS IMPORTS para Visibilidad ⭐
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +30,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+// ⭐ NUEVOS IMPORTS para Visibilidad ⭐
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.pasteleriaapp.R
 import com.example.pasteleriaapp.navigation.AppRoute
@@ -36,6 +43,10 @@ import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel) {
     val userState by usuarioViewModel.estado.collectAsState()
     val context = LocalContext.current
+
+    // Variables de estado de la contraseña para mayor claridad
+    val isPasswordVisible = userState.isPasswordVisible
+    val passwordError = userState.errores.contrasena
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -59,6 +70,7 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
                 label = { Text("Correo Electrónico") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email), // Mejor UX: teclado de email
                 isError = userState.errores.correo != null,
                 supportingText = {
                     userState.errores.correo?.let {
@@ -68,17 +80,37 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- CAMPO CONTRASEÑA ---
+            // --- CAMPO CONTRASEÑA MODIFICADO ---
             OutlinedTextField(
                 value = userState.contrasena,
                 onValueChange = usuarioViewModel::onContrasenaChange,
                 label = { Text("Contraseña") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = PasswordVisualTransformation(),
+
+                // ⭐ CLAVE 1: Transformación visual condicional ⭐
+                visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+
                 singleLine = true,
-                isError = userState.errores.contrasena != null,
+
+                // ⭐ CLAVE 2: Ícono interactivo para visibilidad ⭐
+                trailingIcon = {
+                    val image = if (isPasswordVisible)
+                        Icons.Filled.Visibility
+                    else
+                        Icons.Filled.VisibilityOff
+
+                    val description = if (isPasswordVisible) "Ocultar contraseña" else "Mostrar contraseña"
+
+                    IconButton(onClick = { usuarioViewModel.togglePasswordVisibility() }) {
+                        Icon(imageVector = image, contentDescription = description)
+                    }
+                },
+
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), // Teclado de contraseña
+
+                isError = passwordError != null,
                 supportingText = {
-                    userState.errores.contrasena?.let {
+                    passwordError?.let {
                         Text(it, color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -87,20 +119,13 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
 
             // --- BOTÓN ACCEDER (Lógica Remota) ---
             Button(
-                // 🔑 MODIFICACIÓN CLAVE: Manejar usuario y token
                 onClick = {
-                    // 1. Validar campos básicos
                     if (usuarioViewModel.estaValidadoElLogin()) {
-                        // 2. Llamar a la autenticación remota
                         usuarioViewModel.authenticateUser { usuario, token ->
                             if (usuario != null && token != null) {
-                                // 3. ÉXITO: Iniciar sesión en el MainViewModel y navegar
                                 mainViewModel.login(usuario)
                                 mainViewModel.navigateTo(AppRoute.Home.route)
                             }
-                            // 4. FALLO: No hacemos Toast. El error ya se muestra en el OutlinedTextField
-                            // gracias a userState.errores.correo, que el ViewModel actualiza
-                            // con el mensaje de error del backend (ej: "Credenciales incorrectas").
                         }
                     }
                 },

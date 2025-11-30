@@ -65,12 +65,15 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {
-                val errorBody = response.errorBody()?.string()
+                val statusCode = response.code() // Capturamos el código HTTP
 
-                val errorMessage = if (response.code() == 401) {
-                    "Credenciales incorrectas o usuario no encontrado."
+                // ⭐ SOLUCIÓN DEFINITIVA: Lanzamos un mensaje de error único y constante ⭐
+                val errorMessage = if (statusCode == 401 || statusCode == 403) {
+                    "FALLO_CREDENCIALES_INVALIDAS" // <-- ¡Mensaje clave y único!
                 } else {
-                    "Error ${response.code()}: ${errorBody ?: "Error en el servidor de autenticación."}"
+                    // Mantenemos el mensaje detallado para otros errores (500, 404, etc.)
+                    val errorBody = response.errorBody()?.string()
+                    "Error $statusCode: ${errorBody ?: "Error en el servidor de autenticación."}"
                 }
                 Result.failure(Exception(errorMessage))
             }

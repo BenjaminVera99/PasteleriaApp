@@ -71,6 +71,10 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         _estado.update { it.copy(aceptaTerminos = nuevoAceptarTerminos, errores = it.errores.copy(terminos = null)) }
     }
 
+    fun togglePasswordVisibility() {
+        _estado.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+    }
+
     fun onUserLoaded(usuario: Usuario) {
         _estado.update { it.copy(
             nombre = usuario.nombre,
@@ -152,12 +156,11 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                         var usuarioAutenticado = usuarioRepository.findUserByEmail(email)
 
                         if (usuarioAutenticado == null) {
-                            // Versión simple/anterior: Si el usuario no existe en Room, crearlo con datos básicos
                             usuarioAutenticado = Usuario(
                                 nombre = "Usuario Autenticado",
                                 correo = email,
                                 contrasena = contrasena,
-                                direccion = estadoActual.direccion, // Usa la dirección del estado (posiblemente vacía)
+                                direccion = estadoActual.direccion,
                                 profilePictureUri = null
                             )
                             usuarioRepository.registrarUsuario(usuarioAutenticado)
@@ -167,8 +170,17 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                         onResult(usuarioAutenticado, token)
 
                     } else {
-                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Fallo al iniciar sesión."
-                        _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
+                        val exception = resultadoRemoto.exceptionOrNull()
+                        val mensajeOriginal = exception?.message ?: "Fallo al iniciar sesión."
+
+                        // ⭐ COMPROBACIÓN CLAVE: Buscamos el mensaje único del Repository ⭐
+                        val mensajeFinal = if (mensajeOriginal == "FALLO_CREDENCIALES_INVALIDAS") {
+                            "Correo electrónico o contraseña incorrectos." // Mensaje amigable
+                        } else {
+                            mensajeOriginal // Muestra la red o el error del servidor (si no es 401/403)
+                        }
+
+                        _estado.update { it.copy(errores = it.errores.copy(correo = mensajeFinal)) }
                         onResult(null, null)
                     }
                 } catch (e: Exception) {
@@ -181,6 +193,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
             onResult(null, null)
         }
     }
+
 
     // 🔑 FUNCIÓN PARA VERIFICAR AUTENTICACIÓN AL INICIO
     suspend fun checkAuthStatus(): String? {
