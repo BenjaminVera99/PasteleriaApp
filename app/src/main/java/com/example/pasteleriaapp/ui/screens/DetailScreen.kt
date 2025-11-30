@@ -74,7 +74,7 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
         ) {
             if (product != null) {
                 AsyncImage(
-                    model = "http://10.0.2.2:9090/" + product.img,
+                    model = product.fullImageUrl,
                     contentDescription = product.name,
                     modifier = Modifier
                         .fillMaxWidth()

@@ -9,17 +9,15 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import java.util.concurrent.TimeUnit // <-- Nuevo import
 
 object RetrofitInstance {
 
-    // 🔑 Verifica tu URL. Si el endpoint es /auth/login, la BASE_URL debe terminar en /
-    private const val BASE_URL = "http://192.168.0.10:9090/"
+    private const val BASE_URL = "http://192.168.0.10:9090/api/"
 
-    // 🔑 Propiedades lateinit para inicialización dinámica (Necesario para el Context)
     private lateinit var applicationContext: Context
     private lateinit var retrofitInstance: Retrofit
 
-    // 🔑 Instancia perezosa (lazy) de tu ApiService
     val api: ApiService by lazy {
         if (!::retrofitInstance.isInitialized) {
             throw IllegalStateException("RetrofitInstance no ha sido inicializado. Llama a initialize(context) primero.")
@@ -27,42 +25,35 @@ object RetrofitInstance {
         retrofitInstance.create(ApiService::class.java)
     }
 
-    /**
-     * Inicializa Retrofit y configura el OkHttpClient con el Interceptor de Autenticación.
-     */
     fun initialize(context: Context) {
-        if (::retrofitInstance.isInitialized) return // Evitar doble inicialización
+        if (::retrofitInstance.isInitialized) return
 
         applicationContext = context.applicationContext
 
-        // 1. Instancia del Token Manager
         val authTokenManager = AuthTokenManager(applicationContext)
-
-        // 2. Interceptor para inyectar el token (Authorization: Bearer <token>)
         val authInterceptor = AuthInterceptor(authTokenManager)
-
-        // 3. Interceptor de Logging (Para ver peticiones y respuestas en Logcat)
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY // Nivel recomendado para debug
+            level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // 4. Crear el Cliente OkHttp con los Interceptores
+        // 🔑 MODIFICACIÓN AQUÍ: Añadir tiempos de espera explícitos
         val client = OkHttpClient.Builder()
-            .addInterceptor(authInterceptor)  // 🛡️ Agrega el token de autenticación
-            .addInterceptor(loggingInterceptor) // 🐛 Agrega el logging
+            .connectTimeout(30, TimeUnit.SECONDS) // Tiempo máximo para establecer la conexión (30s)
+            .readTimeout(30, TimeUnit.SECONDS)    // Tiempo máximo para leer los datos (30s)
+            .writeTimeout(30, TimeUnit.SECONDS)   // Tiempo máximo para enviar los datos (30s)
+            .addInterceptor(authInterceptor)
+            .addInterceptor(loggingInterceptor)
             .build()
+        // FIN MODIFICACIÓN
 
-        // 5. Configuración del serializador JSON (Kotlinx Serialization)
         val json = Json {
-            ignoreUnknownKeys = true // Ignora campos que no estén en tus modelos de datos (recomendado)
+            ignoreUnknownKeys = true
         }
         val contentType = "application/json".toMediaType()
 
-        // 6. Construir Retrofit
         retrofitInstance = Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(client) // 🔑 Usar el cliente OkHttp con los interceptores
-            // 🔑 USAMOS Kotlinx Serialization
+            .client(client)
             .addConverterFactory(json.asConverterFactory(contentType))
             .build()
     }

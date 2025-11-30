@@ -1,5 +1,6 @@
 package com.example.pasteleriaapp.model
 
+import android.util.Log
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
@@ -22,6 +23,12 @@ data class Product(
     val fullImageUrl: String
         get() {
             val imagePath = img.trim()
-            return "$BASE_URL$imagePath"
+            val finalUrl = "$BASE_URL$imagePath"
+
+            // ⭐⭐ LÍNEA DE DEPURACIÓN ⭐⭐
+            Log.d("IMG_URL_DEBUG", "URL de imagen construida: $finalUrl")
+            // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
+
+            return finalUrl
         }
 }

@@ -118,7 +118,8 @@ fun CartItemRow(item: UiCartItem, onIncrease: () -> Unit, onDecrease: () -> Unit
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
-                model = "http://10.0.2.2:9090/" + item.product.img,
+                // ⭐ SOLUCIÓN: Usar la propiedad 'fullImageUrl' del modelo Product
+                model = item.product.fullImageUrl,
                 contentDescription = item.product.name,
                 modifier = Modifier
                     .size(60.dp)

@@ -1,4 +1,4 @@
-// src/main/kotlin/.../dao/ApiService.kt
+// Archivo: ApiService.kt MODIFICADO
 
 import com.example.pasteleriaapp.data.dao.UpdateData
 import com.example.pasteleriaapp.model.InicioSesion
@@ -15,25 +15,28 @@ import retrofit2.http.PUT
 
 interface ApiService {
 
+    // Rutas de Productos (Ahora: /api/products)
     @GET("products")
     suspend fun getProducts(): List<Product>
 
     @GET("products/{id}")
     suspend fun getProduct(@Path("id") id: Long): Product
 
+    // Rutas de Autenticación (Ahora: /api/auth/register)
+    // Spring Boot necesita la URL completa, incluso si la BASE_URL ya tiene /api/.
+    // Por eso ajustamos el @POST para que sea solo "auth/register"
     @POST("auth/register")
     suspend fun register(
         @Body registro: RegistroData
     ): Response<MensajeRespuesta>
 
-    // --- Endpoint de Login (Recomendado añadir) ---
     @POST("auth/login")
     suspend fun login(@Body credenciales: InicioSesion): Response<LoginResponse>
 
     @PUT("auth/update")
     suspend fun updateProfile(
-        // Utiliza el DTO que acabamos de crear
         @Body updateData: UpdateData
     ): Response<Map<String, Any>>
 
+    // Nota: Las demás rutas (como /api/cart) seguirían el mismo patrón.
 }
