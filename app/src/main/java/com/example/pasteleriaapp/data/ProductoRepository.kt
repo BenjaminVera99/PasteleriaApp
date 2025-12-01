@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ProductoRepository(
+ class ProductoRepository(
     private val productDao: ProductDao,
     private val apiService: ApiService
 ) {

@@ -24,9 +24,6 @@ interface ApiService {
     @GET("products/{id}")
     suspend fun getProduct(@Path("id") id: Long): Product
 
-    // Rutas de Autenticación (Ahora: /api/auth/register)
-    // Spring Boot necesita la URL completa, incluso si la BASE_URL ya tiene /api/.
-    // Por eso ajustamos el @POST para que sea solo "auth/register"
     @POST("auth/register")
     suspend fun register(
         @Body registro: RegistroData

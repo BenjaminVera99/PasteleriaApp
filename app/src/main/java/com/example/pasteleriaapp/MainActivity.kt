@@ -39,6 +39,7 @@ import coil.ImageLoaderFactory
 import com.example.pasteleriaapp.data.AppDatabase
 import com.example.pasteleriaapp.data.UsuarioRepository
 import com.example.pasteleriaapp.data.dao.RetrofitInstance
+import com.example.pasteleriaapp.data.preferences.AuthTokenManager
 import com.example.pasteleriaapp.navigation.AppRoute
 import com.example.pasteleriaapp.navigation.NavigationEvent
 import com.example.pasteleriaapp.ui.components.MainBottomBar
@@ -59,9 +60,12 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
     private val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
     private val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
 
+    private val authTokenManager: AuthTokenManager by lazy {
+        AuthTokenManager(applicationContext)
+    }
     private val usuarioRepository: UsuarioRepository by lazy {
         val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
-        UsuarioRepository(usuarioDao, RetrofitInstance.api)
+        UsuarioRepository(usuarioDao, RetrofitInstance.api, authTokenManager)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

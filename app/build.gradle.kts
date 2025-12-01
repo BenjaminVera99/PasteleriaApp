@@ -84,10 +84,19 @@ dependencies {
     // Konfetti
     implementation("nl.dionsegijn:konfetti-compose:2.0.5")
 
-    // ⭐ CORRECCIÓN CLAVE: Excluir hamcrest-core para resolver la duplicación ⭐
+    // ==========================================================
+    // ⭐ DEPENDENCIAS DE TEST UNITARIO (Kotest, Mockk, JUnit 5) ⭐
+    // ==========================================================
+    testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0") // JUnit 5 runner
+    testImplementation("io.mockk:mockk:1.13.10")
+
+    // Nota: Mantenemos la exclusión de hamcrest-core y la dependencia de JUnit
     testImplementation(libs.junit) {
         exclude(group = "org.hamcrest", module = "hamcrest-core")
     }
+
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("javax.inject:javax.inject:1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -97,7 +106,18 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+
+    // Test UI específicas (Versiones de la guía)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.2")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.2")
+
+    // Mantenemos esta línea para el preview tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+}
+
+// ==========================================================
+// ⭐ CONFIGURACIÓN PARA JUNIT 5 (FUERA DEL BLOQUE dependencies) ⭐
+// ==========================================================
+tasks.withType<Test>().configureEach {
+    useJUnitPlatform()
 }

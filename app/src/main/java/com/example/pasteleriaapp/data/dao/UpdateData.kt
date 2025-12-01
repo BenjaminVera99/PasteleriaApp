@@ -6,8 +6,9 @@ import kotlinx.serialization.Serializable
 data class UpdateData(
     val nombre: String,
     val apellidos: String,
+    val correo: String,
+    val contrasena: String? = null,
     val fechaNac: String,
     val direccion: String,
-    val profilePictureUri: String?, // Puede ser nulo
-    val newPassword: String? = null
+    val profilePictureUri: String?
 )

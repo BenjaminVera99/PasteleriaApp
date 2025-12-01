@@ -1,8 +1,10 @@
 package com.example.pasteleriaapp.data
 
 import ApiService
+import android.util.Log
 import com.example.pasteleriaapp.data.dao.UpdateData
 import com.example.pasteleriaapp.data.dao.UsuarioDao
+import com.example.pasteleriaapp.data.preferences.AuthTokenManager
 import com.example.pasteleriaapp.model.InicioSesion
 import com.example.pasteleriaapp.model.LoginResponse
 import com.example.pasteleriaapp.model.MensajeRespuesta // ⭐ Importe agregado
@@ -12,7 +14,9 @@ import com.example.pasteleriaapp.model.Usuario
 import java.io.IOException
 
 class UsuarioRepository(private val usuarioDao: UsuarioDao,
-                        private val apiService: ApiService) {
+                        private val apiService: ApiService,
+                        private val authTokenManager: AuthTokenManager
+) {
 
     // --- Operaciones Locales ---
 
@@ -64,7 +68,14 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
             val response = apiService.login(credenciales)
 
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val loginResponse = response.body()!!
+                authTokenManager.saveAuthData(
+                    token = loginResponse.token, // Asumo que LoginResponse tiene 'token'
+                    role = loginResponse.role,   // Asumo que LoginResponse tiene 'role'
+                    email = credenciales.username // O usa un campo del loginResponse si lo devuelve
+                )
+
+                Result.success(loginResponse)
             } else {
                 val statusCode = response.code() // Capturamos el código HTTP
 
@@ -97,9 +108,14 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
                 // Éxito (código 2xx): El servidor ha actualizado los datos.
                 Result.success(Unit)
             } else {
-                // Error HTTP (4xx o 5xx)
                 val errorBody = response.errorBody()?.string()
-                val mensajeError = "Error ${response.code()}: ${errorBody ?: "Fallo al actualizar el perfil"}"
+                val statusCode = response.code()
+
+                // ⭐ CAMBIAR a Log.e para asegurar visibilidad ⭐
+                Log.e("API_UPDATE", "UPDATE FAIL: HTTP Code $statusCode")
+                Log.e("API_UPDATE", "UPDATE FAIL: Error Body -> $errorBody")
+
+                val mensajeError = "Error $statusCode: ${errorBody ?: "Fallo al actualizar el perfil"}"
                 Result.failure(Exception(mensajeError))
             }
         } catch (e: IOException) {

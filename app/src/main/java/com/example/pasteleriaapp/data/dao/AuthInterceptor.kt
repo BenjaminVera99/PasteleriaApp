@@ -37,6 +37,7 @@ class AuthInterceptor(private val authTokenManager: AuthTokenManager) : Intercep
             authTokenManager.authToken.first()
         }
 
+
         if (!token.isNullOrEmpty()) {
             val requestBuilder = originalRequest.newBuilder()
             // Añadir el encabezado Authorization

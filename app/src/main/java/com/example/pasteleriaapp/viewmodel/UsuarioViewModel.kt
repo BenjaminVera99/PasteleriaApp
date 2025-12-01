@@ -41,8 +41,8 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
         val usuarioDao = AppDatabase.getDatabase(application).usuarioDao()
         val apiService = RetrofitInstance.api
 
-        usuarioRepository = UsuarioRepository(usuarioDao, apiService)
         authTokenManager = AuthTokenManager(application)
+        usuarioRepository = UsuarioRepository(usuarioDao, apiService, authTokenManager)
     }
 
     // --- Actualizadores de estado para los campos del formulario ---
@@ -98,7 +98,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                     password = _estado.value.contrasena,
                     nombres = _estado.value.nombre,
                     apellidos = _estado.value.apellidos,
-                    fechaNac = convertirDeFormatoISO(_estado.value.fechaNacimiento),
+                    fechaNac = convertirParaApi(_estado.value.fechaNacimiento),
                     direccion = estado.value.direccion
 
                 )
@@ -171,7 +171,7 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                                 correo = profile.username.trim(),
                                 contrasena = contrasena,
                                 direccion = direccionAPI,
-                                fechaNacimiento = convertirDeFormatoISO(profile.fechaNac).trim(),
+                                fechaNacimiento = convertirParaApi(profile.fechaNac).trim(),
                                 profilePictureUri = null
                             )
 
@@ -320,10 +320,11 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                 val updateData = UpdateData(
                     nombre = estadoActual.nombre,
                     apellidos = estadoActual.apellidos,
-                    fechaNac = convertirDeFormatoISO(estadoActual.fechaNacimiento),
+                    fechaNac = convertirParaApi(estadoActual.fechaNacimiento),
                     direccion = estadoActual.direccion,
                     profilePictureUri = usuarioLocal.profilePictureUri,
-                    newPassword = newPassword
+                    contrasena = estadoActual.contrasena,
+                    correo = estadoActual.correo
                 )
 
                 try {
@@ -337,7 +338,8 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
                             apellidos = estadoActual.apellidos,
                             direccion = estadoActual.direccion,
                             fechaNacimiento = estadoActual.fechaNacimiento,
-                            contrasena = newPassword ?: usuarioLocal.contrasena
+                            contrasena = newPassword ?: usuarioLocal.contrasena,
+                            correo = estadoActual.correo
                         )
                         usuarioRepository.updateUser(usuarioActualizadoLocal)
 
@@ -522,18 +524,18 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
     }
 
     // --- FUNCIÓN DE UTILIDAD ---
-    private fun convertirDeFormatoISO(fechaISO: String): String {
+    private fun convertirParaApi(fechaLocal: String): String {
         // Si la fecha coincide con el patrón YYYY-MM-DD (4º carácter es guion), entonces la invertimos.
-        if (fechaISO.length >= 10 && fechaISO[4] == '-') {
-            val partes = fechaISO.split("-")
-
-            // Verificamos que sea YYYY-MM-DD antes de invertir a DD-MM-AAAA
-            if (partes.size == 3 && partes[0].length == 4) {
-                return "${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0]}" // D-M-Y
-            }
+        if (fechaLocal.length == 10 && fechaLocal[4] == '-') {
+            return fechaLocal // Retorna YYYY-MM-DD
+        }
+        if (fechaLocal.length == 10 && fechaLocal[2] == '-') {
+            // Asume formato DD-MM-YYYY, lo convierte a YYYY-MM-DD
+            val partes = fechaLocal.split("-")
+            return "${partes[2]}-${partes[1]}-${partes[0]}"
         }
 
         // Si no es el formato ISO (YYYY-MM-DD), lo devolvemos sin cambios (ej: 05-05-2020)
-        return fechaISO
+        return fechaLocal
     }
 }
