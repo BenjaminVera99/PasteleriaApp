@@ -73,6 +73,7 @@ dependencies {
     // Coil
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.ui.test.junit4)
 
     // Room
     val roomVersion = "2.7.0-beta01"
@@ -108,8 +109,12 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     // Test UI específicas (Versiones de la guía)
+    androidTestImplementation("androidx.test.ext:junit:1.2.1") // <--- Actualizar
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1") // <--- Actualizar
+
+    // Las dependencias de compose-test-junit4 y mockk son necesarias para tu ProfileScreenTest
     androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.6.2")
-    debugImplementation("androidx.compose.ui:ui-test-manifest:1.6.2")
+    androidTestImplementation("io.mockk:mockk-android:1.13.10")
 
     // Mantenemos esta línea para el preview tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
