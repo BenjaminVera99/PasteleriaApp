@@ -334,15 +334,27 @@ fun ProfileScreen(
                 }
                 Button(
                     onClick = {
-                        // Guardar cambios llamando a la función del ViewModel
-                        usuarioViewModel.saveChanges { updatedUser ->
-                            mainViewModel.onUserUpdated(updatedUser)
-                            Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                        // ⭐ 1. Log de confirmación de entrada
+                        android.util.Log.d("FLOW_DEBUG", "Punto A: Click capturado. Iniciando validación.")
+
+                        // Ejecutar la validación dentro del onClick
+                        if (usuarioViewModel.estaValidadoElPerfil()) {
+                            android.util.Log.d("FLOW_DEBUG", "Punto B: Validación OK. Llamando a saveChanges.")
+
+                            // Llamar a la función del ViewModel
+                            usuarioViewModel.saveChanges { updatedUser ->
+                                mainViewModel.onUserUpdated(updatedUser)
+                                Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
+                            }
+                            isEditing = false
+                        } else {
+                            // ⭐ 2. Mostrar el error de validación local
+                            android.util.Log.w("FLOW_DEBUG", "Punto B: Validación FALLIDA. No se llama a la API.")
+                            Toast.makeText(context, "Por favor, corrige los errores del formulario.", Toast.LENGTH_LONG).show()
                         }
-                        isEditing = false
                     },
                     modifier = Modifier.weight(1f),
-                    // Habilitado si el formulario de perfil está validado
+                    // CRÍTICO: Usamos la validación en el enabled (pero la comprobación real está en el onClick)
                     enabled = usuarioViewModel.estaValidadoElPerfil()
                 ) {
                     Text("Guardar Cambios")

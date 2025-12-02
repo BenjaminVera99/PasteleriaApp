@@ -1,6 +1,7 @@
 // Archivo: ApiService.kt MODIFICADO
 
 import com.example.pasteleriaapp.data.dao.UpdateData
+import com.example.pasteleriaapp.data.dao.UpdateResponse
 import com.example.pasteleriaapp.model.InicioSesion
 import com.example.pasteleriaapp.model.LoginResponse
 import com.example.pasteleriaapp.model.MensajeRespuesta
@@ -13,6 +14,7 @@ import retrofit2.http.POST
 import retrofit2.http.Body
 import retrofit2.Response
 import retrofit2.http.DELETE
+import retrofit2.http.Header
 import retrofit2.http.PUT
 
 interface ApiService {
@@ -34,8 +36,9 @@ interface ApiService {
 
     @PUT("auth/update")
     suspend fun updateProfile(
+        @Header("Authorization") token: String,
         @Body updateData: UpdateData
-    ): Response<Map<String, Any>>
+    ): UpdateResponse
 
     @DELETE("auth/delete")
     suspend fun deleteUser(): Response<MensajeRespuesta>

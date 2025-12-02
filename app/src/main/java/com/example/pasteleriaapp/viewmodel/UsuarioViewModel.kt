@@ -303,59 +303,85 @@ class UsuarioViewModel(application: Application): AndroidViewModel(application) 
      * Función para guardar los cambios de edición del perfil local y remotamente.
      */
     fun saveChanges(onUserUpdated: (Usuario) -> Unit) {
+        // ⭐ Punto A: Click capturado. Se inicia la validación.
+        Log.d("FLOW_DEBUG", "Punto A: saveChanges llamado. Validando perfil...")
+
         if (estaValidadoElPerfil()) {
+            // ⭐ Punto B: Validación OK. Se inicia la corrutina.
+            Log.d("FLOW_DEBUG", "Punto B: Validación OK. Iniciando viewModelScope.launch.")
+
             viewModelScope.launch {
+                // ⭐ Punto C: Corrutina de API (launch) iniciada.
+                Log.d("FLOW_DEBUG", "Punto C: Corrutina iniciada. Preparando datos...")
+
                 val estadoActual = _estado.value
                 val usuarioLocal = usuarioRepository.findUserByEmail(estadoActual.correo)
 
-                if (usuarioLocal == null) return@launch
+                if (usuarioLocal == null) {
+                    Log.e("FLOW_DEBUG", "Punto C/Error: Usuario local no encontrado. Abortando PUT.")
+                    return@launch
+                }
 
-                val newPassword = if (estadoActual.contrasena.isNotEmpty()) {
+                val newPasswordToSend = if (estadoActual.contrasena.isNotEmpty()) {
                     estadoActual.contrasena
                 } else {
                     null
                 }
 
                 // Creamos el objeto de datos para la API
+                // NOTA: profilePictureUri es String? en el DTO de Kotlin
                 val updateData = UpdateData(
                     nombre = estadoActual.nombre,
                     apellidos = estadoActual.apellidos,
-                    fechaNac = convertirParaApi(estadoActual.fechaNacimiento),
+                    fechaNac = convertirParaApi(estadoActual.fechaNacimiento), // Asegurar formato YYYY-MM-DD
                     direccion = estadoActual.direccion,
+                    // Incluimos profilePictureUri ya que está en el DTO de Kotlin
                     profilePictureUri = usuarioLocal.profilePictureUri,
-                    contrasena = estadoActual.contrasena,
+                    contrasena = newPasswordToSend, // Puede ser null
                     correo = estadoActual.correo
                 )
 
                 try {
-                    // ⭐ 1. LLAMADA A LA API REMOTA (auth/update) ⭐
+                    // ⭐ Punto D: LLAMADA A LA API REMOTA (OkHttp log debería aparecer ahora) ⭐
+                    Log.d("FLOW_DEBUG", "Punto D: Llamando a actualizarUsuarioRemoto con DTO: $updateData")
+
                     val resultadoRemoto = usuarioRepository.actualizarUsuarioRemoto(updateData)
 
                     if (resultadoRemoto.isSuccess) {
+                        // ⭐ Punto E: ÉXITO REMOTO ⭐
+                        Log.d("FLOW_DEBUG", "Punto E: Actualización remota exitosa.")
+
                         // 2. ÉXITO REMOTO: Actualizar el usuario LOCAL
                         val usuarioActualizadoLocal = usuarioLocal.copy(
                             nombre = estadoActual.nombre,
                             apellidos = estadoActual.apellidos,
                             direccion = estadoActual.direccion,
                             fechaNacimiento = estadoActual.fechaNacimiento,
-                            contrasena = newPassword ?: usuarioLocal.contrasena,
+                            contrasena = newPasswordToSend ?: usuarioLocal.contrasena,
                             correo = estadoActual.correo
                         )
                         usuarioRepository.updateUser(usuarioActualizadoLocal)
 
-                        // Limpiamos el campo de contraseña después de guardar, para que no se reenvíe al cancelar/guardar.
+                        // Limpiamos el campo de contraseña después de guardar
                         _estado.update { it.copy(contrasena = "") }
 
                         onUserUpdated(usuarioActualizadoLocal)
                     } else {
-                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Error desconocido al actualizar."
+                        // ⭐ Punto E/Fallo: FALLO DE API (400, 401, 500) ⭐
+                        val mensajeError = resultadoRemoto.exceptionOrNull()?.message ?: "Error desconocido al actualizar (Fallo de API)."
+                        Log.e("FLOW_DEBUG", "Punto E/Fallo: Fallo en la respuesta de API: $mensajeError")
                         _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
                     }
                 } catch (e: Exception) {
-                    val mensajeError = "Error de conexión al guardar cambios: ${e.message}"
+                    // ⭐ Punto F: EXCEPCIÓN FATAL (Error de Red o Serialización) ⭐
+                    val mensajeError = "Error de conexión o serialización al guardar cambios: ${e.message}"
+                    Log.e("FLOW_DEBUG", "Punto F: EXCEPCIÓN FATAL: $mensajeError", e)
                     _estado.update { it.copy(errores = it.errores.copy(correo = mensajeError)) }
                 }
             }
+        } else {
+            // ⭐ Punto B/Fallo: Validación FALLIDA
+            Log.w("FLOW_DEBUG", "Punto B/Fallo: Validación del perfil fallida. No se llama a la API.")
         }
     }
 

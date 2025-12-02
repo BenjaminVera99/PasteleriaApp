@@ -37,6 +37,8 @@ class AuthInterceptor(private val authTokenManager: AuthTokenManager) : Intercep
             authTokenManager.authToken.first()
         }
 
+        android.util.Log.d("AUTH_INTERCEPTOR", "Intentando token para ruta: ${originalRequest.url.encodedPath}")
+        android.util.Log.d("AUTH_INTERCEPTOR", "Token Obtenido: $token")
 
         if (!token.isNullOrEmpty()) {
             val requestBuilder = originalRequest.newBuilder()
@@ -46,6 +48,7 @@ class AuthInterceptor(private val authTokenManager: AuthTokenManager) : Intercep
             return chain.proceed(newRequest)
         }
 
+        android.util.Log.w("AUTH_INTERCEPTOR", "Petición a ruta privada sin token: CONTINÚA SIN AUTH HEADER")
         // Si la ruta no es pública, pero no hay token, la petición continuará,
         // y el servidor (Spring Security) le enviará un 401 Unauthorized o 403 Forbidden,
         // lo cual es correcto para una ruta privada.

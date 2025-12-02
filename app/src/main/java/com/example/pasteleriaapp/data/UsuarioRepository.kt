@@ -3,6 +3,7 @@ package com.example.pasteleriaapp.data
 import ApiService
 import android.util.Log
 import com.example.pasteleriaapp.data.dao.UpdateData
+import com.example.pasteleriaapp.data.dao.UpdateResponse
 import com.example.pasteleriaapp.data.dao.UsuarioDao
 import com.example.pasteleriaapp.data.preferences.AuthTokenManager
 import com.example.pasteleriaapp.model.InicioSesion
@@ -11,6 +12,9 @@ import com.example.pasteleriaapp.model.MensajeRespuesta // ⭐ Importe agregado
 import com.example.pasteleriaapp.model.ProfileResponse
 import com.example.pasteleriaapp.model.RegistroData
 import com.example.pasteleriaapp.model.Usuario
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 class UsuarioRepository(private val usuarioDao: UsuarioDao,
@@ -100,28 +104,25 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
      * ⭐ FUNCIÓN REQUERIDA POR EL VIEWMODEL: Actualiza el perfil y la contraseña condicionalmente.
      * Recibe el DTO UpdateData que incluye el campo newPassword.
      */
-    suspend fun actualizarUsuarioRemoto(updateData: UpdateData): Result<Unit> {
-        return try {
-            val response = apiService.updateProfile(updateData)
+    suspend fun actualizarUsuarioRemoto(updateData: UpdateData): Result<UpdateResponse> = withContext(Dispatchers.IO) {
+        // ⭐ CORRECCIÓN CLAVE: Devolver el tipo explícitamente desde la lambda (Result<UpdateResponse>)
+        try {
+            val token = authTokenManager.authToken.first()
 
-            if (response.isSuccessful) {
-                // Éxito (código 2xx): El servidor ha actualizado los datos.
-                Result.success(Unit)
-            } else {
-                val errorBody = response.errorBody()?.string()
-                val statusCode = response.code()
-
-                // ⭐ CAMBIAR a Log.e para asegurar visibilidad ⭐
-                Log.e("API_UPDATE", "UPDATE FAIL: HTTP Code $statusCode")
-                Log.e("API_UPDATE", "UPDATE FAIL: Error Body -> $errorBody")
-
-                val mensajeError = "Error $statusCode: ${errorBody ?: "Fallo al actualizar el perfil"}"
-                Result.failure(Exception(mensajeError))
+            if (token.isNullOrBlank()) {
+                // Caso 1: Falla de token.
+                return@withContext Result.failure<UpdateResponse>(Exception("Token no encontrado.")) // Usamos el tipado explícito aquí
             }
-        } catch (e: IOException) {
-            Result.failure(Exception("Error de red: No se pudo conectar con el servidor para actualizar el perfil."))
+
+            // Caso 2: Éxito. Realizar la llamada.
+            val response = apiService.updateProfile("Bearer $token", updateData)
+
+            // Retornar el resultado exitoso.
+            return@withContext Result.success(response)
+
         } catch (e: Exception) {
-            Result.failure(e)
+            // Caso 3: Error de Red/Deserialización.
+            return@withContext Result.failure(e)
         }
     }
 
