@@ -1,3 +1,16 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+val signingProps = Properties()
+val signingFile = rootProject.file("signing.properties")
+if (signingFile.exists()) {
+    // Carga las contraseñas del archivo seguro
+    signingProps.load(FileInputStream(signingFile))
+} else {
+    // Advertencia si no encuentra el archivo (solo compilará en debug)
+    println("ADVERTENCIA: signing.properties no encontrado. Compilando solo en modo DEBUG.")
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -8,6 +21,34 @@ plugins {
 }
 
 android {
+
+    signingConfigs {
+        create("release") {
+            // Usa las propiedades cargadas desde el archivo signing.properties
+            storeFile = file(signingProps.getProperty("storeFile") ?: "")
+            storePassword = signingProps.getProperty("storePassword")
+            keyAlias = signingProps.getProperty("keyAlias")
+            keyPassword = signingProps.getProperty("keyPassword")
+        }
+    }
+    buildTypes {
+        release {
+            // Configuración de ProGuard (ya existente)
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
+            // ¡ASIGNACIÓN DE LA FIRMA A LA COMPILACIÓN DE RELEASE!
+            signingConfig = signingConfigs.getByName("release")
+        }
+        debug {
+            // La versión debug usa la configuración de firma automática de Android Studio
+        }
+    }
+
+
     namespace = "com.example.pasteleriaapp"
     compileSdk = 36 // Se usa la versión directa
 
