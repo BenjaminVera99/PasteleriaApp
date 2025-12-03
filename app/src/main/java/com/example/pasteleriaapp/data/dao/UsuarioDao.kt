@@ -9,7 +9,7 @@ import com.example.pasteleriaapp.model.Usuario
 
 @Dao
 interface UsuarioDao {
-    @Insert(onConflict = OnConflictStrategy.Companion.FAIL) // Falla si el email ya existe
+    @Insert(onConflict = OnConflictStrategy.Companion.FAIL)
     suspend fun insert(usuario: Usuario)
 
     @Update

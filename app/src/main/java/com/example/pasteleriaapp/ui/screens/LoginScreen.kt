@@ -44,7 +44,6 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
     val userState by usuarioViewModel.estado.collectAsState()
     val context = LocalContext.current
 
-    // Variables de estado de la contraseña para mayor claridad
     val isPasswordVisible = userState.isPasswordVisible
     val passwordError = userState.errores.contrasena
 
@@ -63,7 +62,6 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             )
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- CAMPO CORREO ---
             OutlinedTextField(
                 value = userState.correo,
                 onValueChange = usuarioViewModel::onCorreoChange,
@@ -80,19 +78,16 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // --- CAMPO CONTRASEÑA MODIFICADO ---
             OutlinedTextField(
                 value = userState.contrasena,
                 onValueChange = usuarioViewModel::onContrasenaChange,
                 label = { Text("Contraseña") },
                 modifier = Modifier.fillMaxWidth(),
 
-                // ⭐ CLAVE 1: Transformación visual condicional ⭐
                 visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
 
                 singleLine = true,
 
-                // ⭐ CLAVE 2: Ícono interactivo para visibilidad ⭐
                 trailingIcon = {
                     val image = if (isPasswordVisible)
                         Icons.Filled.Visibility
@@ -117,7 +112,6 @@ fun LoginScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewModel
             )
             Spacer(modifier = Modifier.height(24.dp))
 
-            // --- BOTÓN ACCEDER (Lógica Remota) ---
             Button(
                 onClick = {
                     if (usuarioViewModel.estaValidadoElLogin()) {

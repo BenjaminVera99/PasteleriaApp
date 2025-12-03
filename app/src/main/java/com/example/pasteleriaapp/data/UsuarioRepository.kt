@@ -22,7 +22,6 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
                         private val authTokenManager: AuthTokenManager
 ) {
 
-    // --- Operaciones Locales ---
 
     suspend fun registrarUsuario(usuario: Usuario) {
         usuarioDao.insert(usuario)
@@ -48,7 +47,6 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
         return null
     }
 
-    // --- Operaciones Remotas de Autenticación y Registro ---
 
     suspend fun registrarUsuarioRemoto(registroData: RegistroData): Result<String> {
         return try {
@@ -74,20 +72,18 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
                 authTokenManager.saveAuthData(
-                    token = loginResponse.token, // Asumo que LoginResponse tiene 'token'
-                    role = loginResponse.role,   // Asumo que LoginResponse tiene 'role'
-                    email = credenciales.username // O usa un campo del loginResponse si lo devuelve
+                    token = loginResponse.token,
+                    role = loginResponse.role,
+                    email = credenciales.username
                 )
 
                 Result.success(loginResponse)
             } else {
-                val statusCode = response.code() // Capturamos el código HTTP
+                val statusCode = response.code()
 
-                // ⭐ SOLUCIÓN DEFINITIVA: Lanzamos un mensaje de error único y constante ⭐
                 val errorMessage = if (statusCode == 401 || statusCode == 403) {
-                    "FALLO_CREDENCIALES_INVALIDAS" // <-- ¡Mensaje clave y único!
+                    "FALLO_CREDENCIALES_INVALIDAS"
                 } else {
-                    // Mantenemos el mensaje detallado para otros errores (500, 404, etc.)
                     val errorBody = response.errorBody()?.string()
                     "Error $statusCode: ${errorBody ?: "Error en el servidor de autenticación."}"
                 }
@@ -98,30 +94,19 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
         }
     }
 
-    // --- Operaciones Remotas de Perfil y Eliminación ---
-
-    /**
-     * ⭐ FUNCIÓN REQUERIDA POR EL VIEWMODEL: Actualiza el perfil y la contraseña condicionalmente.
-     * Recibe el DTO UpdateData que incluye el campo newPassword.
-     */
     suspend fun actualizarUsuarioRemoto(updateData: UpdateData): Result<UpdateResponse> = withContext(Dispatchers.IO) {
-        // ⭐ CORRECCIÓN CLAVE: Devolver el tipo explícitamente desde la lambda (Result<UpdateResponse>)
         try {
             val token = authTokenManager.authToken.first()
 
             if (token.isNullOrBlank()) {
-                // Caso 1: Falla de token.
                 return@withContext Result.failure<UpdateResponse>(Exception("Token no encontrado.")) // Usamos el tipado explícito aquí
             }
 
-            // Caso 2: Éxito. Realizar la llamada.
             val response = apiService.updateProfile("Bearer $token", updateData)
 
-            // Retornar el resultado exitoso.
             return@withContext Result.success(response)
 
         } catch (e: Exception) {
-            // Caso 3: Error de Red/Deserialización.
             return@withContext Result.failure(e)
         }
     }
@@ -157,12 +142,10 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao,
                 Result.success(response.body()!!)
             } else {
                 val errorBody = response.errorBody()?.string()
-                // Si el error es 401 (Unauthorized), significa que el token falló.
                 val mensajeError = "Error al cargar perfil. Código: ${response.code()}. Detalle: ${errorBody ?: "Error desconocido"}"
                 Result.failure(Exception(mensajeError))
             }
         } catch (e: Exception) {
-            // ⭐ AÑADIMOS EL DETALLE DE LA EXCEPCIÓN DE RED ⭐
             Result.failure(Exception("Error de red al cargar el perfil: ${e.message}"))
         }
     }

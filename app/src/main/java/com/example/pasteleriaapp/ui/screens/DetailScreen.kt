@@ -41,10 +41,8 @@ import com.example.pasteleriaapp.viewmodel.MainViewModel
 fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
     val products by mainViewModel.products.collectAsState()
 
-    // ✅ CORRECCIÓN 1: Convertir la String del argumento a Long, no a Int.
     val productIdLong = itemId.toLongOrNull()
 
-    // Buscamos el producto usando el ID Long
     val product = products.find { it.id == productIdLong }
     val context = LocalContext.current
 
@@ -85,12 +83,8 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ✅ CORRECCIÓN 2: Usar la propiedad 'name' o 'category' para un texto descriptivo
-                // Asumiendo que tu modelo Product NO tiene la propiedad 'description',
-                // mostramos el nombre del producto o la categoría como sustituto.
-                // Si SÍ tienes la propiedad 'description', úsala aquí.
                 Text(
-                    text = "${product.name} (${product.category})", // Mostrar nombre y categoría
+                    text = "${product.name} (${product.category})",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -99,8 +93,6 @@ fun DetailScreen(itemId: String, mainViewModel: MainViewModel) {
                 Button(
                     onClick = {
                         mainViewModel.addToCart(product)
-                        // Ya no necesitas Toast si el ViewModel emite UiEvent.ShowSnackbar
-                        // Pero si quieres mantenerlo, está bien:
                         Toast.makeText(context, "${product.name} añadido al carrito", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier.fillMaxWidth(),

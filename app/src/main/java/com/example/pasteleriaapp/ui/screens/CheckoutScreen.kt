@@ -99,7 +99,7 @@ fun CheckoutScreen(mainViewModel: MainViewModel, usuarioViewModel: UsuarioViewMo
                 value = userState.direccion,
                 onValueChange = {
                     usuarioViewModel.onDireccionChange(it)
-                    hasValidationError = false // Limpia el error al empezar a escribir
+                    hasValidationError = false
                 },
                 label = { Text("Dirección de Envío") },
                 modifier = Modifier.fillMaxWidth(),

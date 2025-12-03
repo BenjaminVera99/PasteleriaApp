@@ -5,7 +5,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlinx.serialization.Serializable
 
-private const val BASE_URL = "http://192.168.0.10:9090"
+private const val BASE_URL = "http://192.168.0.7:9090"
 
 @Serializable
 @Entity(tableName = "products")
@@ -19,13 +19,11 @@ data class Product(
     val img: String,
     val onSale: Boolean
 ) {
-    // La propiedad calculada que usa la constante BASE_URL
     val fullImageUrl: String
         get() {
             val imagePath = img.trim()
             val finalUrl = "$BASE_URL$imagePath"
 
-            // ⭐⭐ LÍNEA DE DEPURACIÓN ⭐⭐
             Log.d("IMG_URL_DEBUG", "URL de imagen construida: $finalUrl")
             // ⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐⭐
 

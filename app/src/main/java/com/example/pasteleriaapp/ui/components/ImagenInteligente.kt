@@ -43,7 +43,7 @@ fun ImagenInteligente(
             Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = "Avatar por defecto",
-                modifier = Modifier.size(size * 0.6f), // El ícono será un 60% del tamaño del círculo
+                modifier = Modifier.size(size * 0.6f),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

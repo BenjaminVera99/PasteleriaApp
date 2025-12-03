@@ -24,7 +24,7 @@ import com.example.pasteleriaapp.ui.model.UiCartItem
 data class Order(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val userId: Int?, // Nulo para pedidos de invitados
+    val userId: Int?,
     val items: List<UiCartItem>,
     val totalPrice: Double,
     val date: String,

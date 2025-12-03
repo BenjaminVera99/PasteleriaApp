@@ -9,11 +9,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
-import java.util.concurrent.TimeUnit // <-- Nuevo import
+import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
 
-    private const val BASE_URL = "http://192.168.0.10:9090/api/"
+    private const val BASE_URL = "http://192.168.0.7:9090/api/"
 
     private lateinit var applicationContext: Context
     private lateinit var retrofitInstance: Retrofit
@@ -36,11 +36,10 @@ object RetrofitInstance {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
-        // 🔑 MODIFICACIÓN AQUÍ: Añadir tiempos de espera explícitos
         val client = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS) // Tiempo máximo para establecer la conexión (30s)
-            .readTimeout(30, TimeUnit.SECONDS)    // Tiempo máximo para leer los datos (30s)
-            .writeTimeout(30, TimeUnit.SECONDS)   // Tiempo máximo para enviar los datos (30s)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .build()

@@ -16,7 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday // Usamos CalendarToday
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,7 +38,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-// Constante para el formato de fecha (DD-MM-AAAA)
 private const val DATE_FORMAT = "dd-MM-yyyy"
 
 @Composable
@@ -53,15 +52,13 @@ fun ProfileScreen(
     var showPhotoDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) } // URI temporal para la cámara
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
 
 
-    // Cargar los datos del usuario actual al ViewModel cuando la pantalla se carga
     LaunchedEffect(Unit) {
         usuarioViewModel.loadCurrentUserProfile()
     }
 
-    // --- Launchers y Permisos (Código completo) ---
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -80,7 +77,6 @@ fun ProfileScreen(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri: Uri? ->
             uri?.let {
-                // Persistir el permiso de lectura si es necesario (para acceder a la imagen después)
                 val flag = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(it, flag)
                 usuarioViewModel.updateProfilePicture(it) { updatedUser ->
@@ -114,7 +110,6 @@ fun ProfileScreen(
         }
     )
 
-    // --- Date Picker Dialog ---
     val datePickerDialog = remember {
         val calendar = Calendar.getInstance()
         DatePickerDialog(
@@ -130,11 +125,10 @@ fun ProfileScreen(
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         ).apply {
-            datePicker.maxDate = Date().time // No permitir seleccionar fechas futuras
+            datePicker.maxDate = Date().time
         }
     }
 
-    // --- DIÁLOGOS DE ALERTA ---
 
     if (showPhotoDialog) {
         AlertDialog(
@@ -144,7 +138,6 @@ fun ProfileScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showPhotoDialog = false
-                    // Lógica para abrir la cámara
                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                 }) {
                     Text("Abrir Cámara")
@@ -153,7 +146,6 @@ fun ProfileScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showPhotoDialog = false
-                    // Lógica para abrir la galería (permisos condicionales por versión de Android)
                     val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         Manifest.permission.READ_MEDIA_IMAGES
                     } else {
@@ -181,7 +173,7 @@ fun ProfileScreen(
                     showDeleteConfirmDialog = false
                     usuarioViewModel.deleteCurrentUser { isSuccess, message ->
                         if (isSuccess) {
-                            mainViewModel.logout() // Limpieza de estado global
+                            mainViewModel.logout()
                         }
                         Toast.makeText(context, message ?: "Operación completada.", Toast.LENGTH_SHORT).show()
                     }
@@ -197,7 +189,6 @@ fun ProfileScreen(
         )
     }
 
-    // --- ESTRUCTURA PRINCIPAL DE LA PANTALLA ---
 
     Column(
         modifier = Modifier
@@ -210,7 +201,6 @@ fun ProfileScreen(
         Text("Mi Perfil", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 32.dp))
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Foto de Perfil con opción de edición
         Box {
             ImagenInteligente(
                 imageUri = userState.profilePictureUri,
@@ -241,9 +231,7 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- CAMPOS DE PERFIL (Nombre, Apellidos, Correo, Dirección, FechaNac) ---
 
-        // 1. Nombre
         ProfileField(
             isEditing = isEditing,
             label = "Nombre",
@@ -252,7 +240,6 @@ fun ProfileScreen(
             error = userState.errores.nombre
         )
 
-        // 2. Apellidos
         ProfileField(
             isEditing = isEditing,
             label = "Apellidos",
@@ -262,7 +249,6 @@ fun ProfileScreen(
             placeholder = "No especificado"
         )
 
-        // 3. Correo (NO EDITABLE)
         ProfileField(
             isEditing = isEditing,
             label = "Correo",
@@ -272,7 +258,6 @@ fun ProfileScreen(
             placeholder = "No editable"
         )
 
-        // 4. Dirección
         if (isEditing) {
             ProfileField(
                 isEditing = true,
@@ -283,14 +268,12 @@ fun ProfileScreen(
                 placeholder = "No especificado"
             )
         } else {
-            // ⭐ CORRECCIÓN: Usamos ProfileInfoRow DIRECTAMENTE (como la fecha)
             ProfileInfoRow(
                 label = "Dirección",
                 value = userState.direccion.ifBlank { "No especificado" }
             )
         }
 
-        // 5. Fecha de Nacimiento (con DatePicker)
         if (isEditing) {
             OutlinedTextField(
                 value = userState.fechaNacimiento,
@@ -315,7 +298,6 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // --- Botones de Acción ---
         if (isEditing) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -323,7 +305,6 @@ fun ProfileScreen(
             ) {
                 Button(
                     onClick = {
-                        // Revertir cambios con los datos originales
                         currentUser?.let { usuarioViewModel.onUserLoaded(it) }
                         isEditing = false
                     },
@@ -334,27 +315,22 @@ fun ProfileScreen(
                 }
                 Button(
                     onClick = {
-                        // ⭐ 1. Log de confirmación de entrada
                         android.util.Log.d("FLOW_DEBUG", "Punto A: Click capturado. Iniciando validación.")
 
-                        // Ejecutar la validación dentro del onClick
                         if (usuarioViewModel.estaValidadoElPerfil()) {
                             android.util.Log.d("FLOW_DEBUG", "Punto B: Validación OK. Llamando a saveChanges.")
 
-                            // Llamar a la función del ViewModel
                             usuarioViewModel.saveChanges { updatedUser ->
                                 mainViewModel.onUserUpdated(updatedUser)
                                 Toast.makeText(context, "Perfil actualizado", Toast.LENGTH_SHORT).show()
                             }
                             isEditing = false
                         } else {
-                            // ⭐ 2. Mostrar el error de validación local
                             android.util.Log.w("FLOW_DEBUG", "Punto B: Validación FALLIDA. No se llama a la API.")
                             Toast.makeText(context, "Por favor, corrige los errores del formulario.", Toast.LENGTH_LONG).show()
                         }
                     },
                     modifier = Modifier.weight(1f),
-                    // CRÍTICO: Usamos la validación en el enabled (pero la comprobación real está en el onClick)
                     enabled = usuarioViewModel.estaValidadoElPerfil()
                 ) {
                     Text("Guardar Cambios")
@@ -371,11 +347,10 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Cerrar Sesión
         Button(
             onClick = {
-                mainViewModel.logout() // Limpia estado global
-                usuarioViewModel.logout() // Limpia token y navega
+                mainViewModel.logout()
+                usuarioViewModel.logout()
             },
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -385,18 +360,15 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Eliminar Cuenta
         TextButton(onClick = { showDeleteConfirmDialog = true }) {
             Text("Eliminar Cuenta", color = MaterialTheme.colorScheme.error)
         }
     }
 }
 
-// --- Componentes Auxiliares ---
 
 @Composable
 private fun ProfileInfoRow(label: String, value: String) {
-    // ⭐ MODIFICACIÓN CLAVE: Manejo de "string" y "blank" ⭐
     val displayValue = if (value.isBlank() || value.equals("string", ignoreCase = true)) {
         "No especificado"
     } else {
@@ -444,7 +416,6 @@ private fun ProfileField(
     }
 }
 
-// Función auxiliar para crear la URI temporal de la cámara
 private fun createImageUri(context: Context): Uri {
     val imageFile = File.createTempFile(
         "profile_pic_temp_", ".jpg", context.cacheDir

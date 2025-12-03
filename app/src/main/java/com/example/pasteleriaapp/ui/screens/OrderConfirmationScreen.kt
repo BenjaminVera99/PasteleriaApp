@@ -28,10 +28,10 @@ fun OrderConfirmationScreen(mainViewModel: MainViewModel) {
     )
 
     LaunchedEffect(Unit) {
-        delay(4000) // Espera 4 segundos
+        delay(4000)
         mainViewModel.navigateTo(
             route = AppRoute.Home.route,
-            popUpTo = AppRoute.OrderConfirmation.route, // Se elimina a sí misma de la pila
+            popUpTo = AppRoute.OrderConfirmation.route,
             inclusive = true
         )
     }

@@ -64,7 +64,7 @@ fun MainBottomBar(navController: NavController, mainViewModel: MainViewModel) {
                 },
                 label = { Text(item.label) },
                 selected = selected,
-                alwaysShowLabel = false, // Only show label for selected item
+                alwaysShowLabel = false,
                 onClick = {
                     if (item.route == AppRoute.Profile.route && !isLoggedIn) {
                         mainViewModel.navigateTo(AppRoute.Welcome.route)

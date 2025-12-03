@@ -9,7 +9,7 @@ sealed class AppRoute(val route: String) {
     object Cart : AppRoute("cart")
     object Checkout : AppRoute("checkout")
     object OrderHistory : AppRoute("order_history")
-    object OrderConfirmation : AppRoute("order_confirmation") // Nueva ruta
+    object OrderConfirmation : AppRoute("order_confirmation")
 
     object Detail : AppRoute("detail/{itemId}") {
         fun createRoute(itemId: String) = "detail/$itemId"

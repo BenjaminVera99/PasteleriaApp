@@ -1,5 +1,3 @@
-// Archivo: ApiService.kt MODIFICADO
-
 import com.example.pasteleriaapp.data.dao.UpdateData
 import com.example.pasteleriaapp.data.dao.UpdateResponse
 import com.example.pasteleriaapp.model.InicioSesion
@@ -19,7 +17,6 @@ import retrofit2.http.PUT
 
 interface ApiService {
 
-    // Rutas de Productos (Ahora: /api/products)
     @GET("products")
     suspend fun getProducts(): List<Product>
 

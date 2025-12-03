@@ -58,11 +58,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Trabajos de Corutinas ---
     private var cartJob: Job? = null
     private var ordersJob: Job? = null
 
-    // --- Estados de la UI ---
     val products: StateFlow<List<Product>> = productoRepository.products.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -70,7 +68,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     val isLoading: StateFlow<Boolean> = productoRepository.isLoading
 
-    // --- Estados de Sesión, Carrito y Pedidos ---
     private val _currentUser = MutableStateFlow<Usuario?>(null)
     val currentUser: StateFlow<Usuario?> = _currentUser.asStateFlow()
     private val _isLoggedIn = MutableStateFlow(false)
@@ -103,13 +100,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
-    // --- Eventos de Navegación y UI ---
     private val _navEvents = MutableSharedFlow<NavigationEvent>()
     val navEvents = _navEvents.asSharedFlow()
     private val _uiEvents = MutableSharedFlow<UiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
-    // --- Lógica de Sesión ---
     fun login(usuario: Usuario) {
         _currentUser.value = usuario
         _isLoggedIn.value = true
@@ -149,7 +144,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .launchIn(viewModelScope)
     }
 
-    // --- Lógica de Pedidos ---
     fun placeOrder(shippingAddress: String, buyerName: String, buyerEmail: String): Boolean {
         if (shippingAddress.isBlank()) {
             return false
@@ -189,14 +183,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Lógica del Carrito ---
     fun addToCart(product: Product) {
         viewModelScope.launch {
             _uiEvents.emit(UiEvent.ShowSnackbar("${product.name} añadido al carrito"))
         }
 
         if (_isLoggedIn.value) {
-            // ✅ Corregido: Asegurar que el ID del producto es Long y el ID de usuario es Long
             _currentUser.value?.id?.let { userId ->
                 viewModelScope.launch { cartRepository.addToCart(userId.toLong(), product.id) }
             }
@@ -211,7 +203,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun removeFromCart(productId: Long) { // ✅ De Int a Long
+    fun removeFromCart(productId: Long) {
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { userId ->
                 viewModelScope.launch { cartRepository.removeFromCart(userId.toLong(), productId) }
@@ -244,11 +236,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun decreaseCartItem(productId: Long) { // ✅ De Int a Long
+    fun decreaseCartItem(productId: Long) {
         if (_isLoggedIn.value) {
             _currentUser.value?.id?.let { userId ->
                 viewModelScope.launch {
-                    // ... (Lógica para usuario logueado)
                     cartRepository.decreaseQuantity(
                         userId.toLong(),
                         productId
@@ -259,11 +250,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _guestCartItems.update { cart ->
                 cart.mapNotNull {
                     if (it.product.id == productId) {
-                        // ⭐ CORRECCIÓN CLAVE: Disminuir la cantidad en 1 ⭐
                         if (it.quantity > 1) {
                             it.copy(quantity = it.quantity - 1)
                         } else {
-                            // Si la cantidad es 1, eliminar el item (mapNotNull lo maneja)
                             null
                         }
                     } else {
@@ -274,7 +263,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Funciones de Navegación ---
     fun navigateTo(
         route: String,
         popUpTo: String? = null,
@@ -302,15 +290,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun initializeUserSession(usuario: Usuario) {
-        // 1. Establece el estado de inicio de sesión
         _currentUser.value = usuario
         _isLoggedIn.value = true
         _guestCartItems.value = emptyList()
 
-        // 2. Carga los datos asociados al usuario persistente
         usuario.id?.let { userId ->
-            // Tu MainViewModel ya usa Long para loadCartForUser y loadOrdersForUser
-            // Nos aseguramos que el ID sea Long, ya que el ID de Room es a menudo un Long.
             val userIdLong = userId.toLong()
 
             loadCartForUser(userIdLong)

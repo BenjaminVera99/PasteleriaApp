@@ -19,7 +19,6 @@ class ProductoRepositoryTest : StringSpec({
     val mockApi = mockk<ApiService>()
     val mockDao = mockk<ProductDao>(relaxed = true)
 
-    // Datos simulados (mantener la estructura que ya te funcionó)
     val fakeProducts = listOf(
         Product(
             id = 1L,
@@ -42,25 +41,18 @@ class ProductoRepositoryTest : StringSpec({
     )
 
     "refreshProducts() debe obtener de API, borrar Room e insertar los nuevos productos" {
-        // ⭐ PASO 1: Mockear la clase Log de Android (es una clase estática) ⭐
         mockkStatic(Log::class)
-        // Decirle a MockK que cuando se llame a Log.e, simplemente devuelva 0 (un entero)
         every { Log.e(any(), any()) } returns 0
-        // También mockeamos Log.d (que se llama en el success de tu refreshProducts)
         every { Log.d(any(), any()) } returns 0
 
-        // 2. Configurar el comportamiento: La API devuelve los productos simulados (ÉXITO)
         coEvery { mockApi.getProducts() } returns fakeProducts
 
-        // 3. Crear la instancia del Repository con los Mocks
         val repo = ProductoRepository(productDao = mockDao, apiService = mockApi)
 
-        // 4. Ejecutar la función
         runTest {
             repo.refreshProducts()
         }
 
-        // 5. Verificaciones de éxito
         coVerify(exactly = 1) { mockDao.clearTable() }
         coVerify(exactly = 1) { mockDao.insertAll(fakeProducts) }
     }

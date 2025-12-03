@@ -56,7 +56,6 @@ import kotlinx.coroutines.runBlocking
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
-    // 1. Inicialización de ViewModels y Repositorios fuera de onCreate
     private val mainViewModel: MainViewModel by viewModels { MainViewModelFactory(application) }
     private val usuarioViewModel: UsuarioViewModel by viewModels { UsuarioViewModelFactory(application) }
 
@@ -78,10 +77,8 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
 
         enableEdgeToEdge()
 
-        // 2. Determinar la ruta de inicio por defecto
         var startRoute = AppRoute.Welcome.route
 
-        // 3. COMPROBACIÓN DE AUTENTICACIÓN PERSISTENTE (Bloque Crítico)
         runBlocking {
             val token = usuarioViewModel.checkAuthStatus()
             val savedEmail = usuarioViewModel.getSavedEmail()
@@ -95,7 +92,6 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                 }
             }
         }
-        // FIN DE COMPROBACIÓN
 
         setContent {
             PasteleriaAppTheme {
@@ -104,9 +100,7 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                 val currentRoute = navBackStackEntry?.destination?.route
                 val snackbarHostState = remember { SnackbarHostState() }
 
-                // --- MANEJO DE EVENTOS DE NAVEGACIÓN ---
 
-                // Bloque 1: Manejo de eventos del MainViewModel (Lógica existente)
                 LaunchedEffect(Unit) {
                     mainViewModel.navEvents.collect { event ->
                         when (event) {
@@ -124,18 +118,15 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                     }
                 }
 
-                // ⭐ Bloque 2: Manejo de eventos del UsuarioViewModel (NUEVA LÓGICA) ⭐
-                // Captura el evento de eliminación de cuenta y navega a Home/Invitado
                 LaunchedEffect(Unit) {
                     usuarioViewModel.navigationEvents.collect { event ->
                         when (event) {
                             is NavigationEvent.NavigateTo -> {
                                 navController.navigate(
                                     route = event.route,
-                                    navOptions = navOptions { // Usamos navOptions para aplicar popUpTo
+                                    navOptions = navOptions {
                                         event.popUpTo?.let { popUpRoute ->
                                             popUpTo(popUpRoute) {
-                                                // popUpTo(Home) con inclusive = true, borra todo el historial
                                                 inclusive = event.inclusive
                                             }
                                         }
@@ -148,7 +139,6 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                         }
                     }
                 }
-                // --- FIN MANEJO DE EVENTOS ---
 
 
                 Scaffold(
@@ -182,7 +172,6 @@ class MainActivity : ComponentActivity(), ImageLoaderFactory {
                         }
                     }
                 ) { innerPadding ->
-                    // 4. NavHost utiliza la ruta de inicio determinada dinámicamente
                     NavHost(
                         navController = navController,
                         startDestination = startRoute,

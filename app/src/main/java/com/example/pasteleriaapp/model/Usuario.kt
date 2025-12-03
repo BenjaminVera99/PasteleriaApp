@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "users",
-    indices = [Index(value = ["correo"], unique = true)] // Asegura que no haya correos repetidos
+    indices = [Index(value = ["correo"], unique = true)]
 )
 data class Usuario(
     @PrimaryKey(autoGenerate = true)

@@ -35,7 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "pasteleria_database"
                 )
-                .fallbackToDestructiveMigration() // OJO: Solo para desarrollo
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

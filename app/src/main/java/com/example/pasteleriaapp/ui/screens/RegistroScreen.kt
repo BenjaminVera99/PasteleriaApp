@@ -47,7 +47,6 @@ import com.example.pasteleriaapp.viewmodel.UsuarioViewModel
 fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewModel) {
     val estado by usuarioViewModel.estado.collectAsState()
 
-    // Variables de estado necesarias para la visibilidad
     val isPasswordVisible = estado.isPasswordVisible
     val passwordError = estado.errores.contrasena
 
@@ -74,13 +73,12 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     .fillMaxSize()
                     .padding(paddingValues)
                     .padding(horizontal = 16.dp)
-                    .verticalScroll(scrollState), // ⬅️ Habilitar scroll
+                    .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(modifier = Modifier.height(8.dp)) // Espacio superior
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // --- CAMPO NOMBRE ---
                 OutlinedTextField(
                     value = estado.nombre,
                     onValueChange = usuarioViewModel::onNombreChange,
@@ -91,7 +89,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 🔑 CAMPO AÑADIDO: APELLIDOS
                 OutlinedTextField(
                     value = estado.apellidos,
                     onValueChange = usuarioViewModel::onApellidosChange,
@@ -102,7 +99,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // --- CAMPO EMAIL ---
                 OutlinedTextField(
                     value = estado.correo,
                     onValueChange = usuarioViewModel::onCorreoChange,
@@ -114,17 +110,14 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // --- CAMPO CONTRASEÑA MODIFICADO ---
                 OutlinedTextField(
                     value = estado.contrasena,
                     onValueChange = usuarioViewModel::onContrasenaChange,
                     label = { Text("Contraseña") },
                     isError = passwordError != null,
 
-                    // ⭐ CLAVE 1: Transformación visual condicional ⭐
                     visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
 
-                    // ⭐ CLAVE 2: Ícono interactivo para visibilidad ⭐
                     trailingIcon = {
                         val image = if (isPasswordVisible)
                             Icons.Filled.Visibility
@@ -143,7 +136,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 🔑 CAMPO AÑADIDO: FECHA DE NACIMIENTO (Asumiendo formato DD-MM-YYYY)
                 OutlinedTextField(
                     value = estado.fechaNacimiento,
                     onValueChange = usuarioViewModel::onFechaNacimientoChange,
@@ -154,7 +146,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // --- CAMPO DIRECCIÓN ---
                 OutlinedTextField(
                     value = estado.direccion,
                     onValueChange = usuarioViewModel::onDireccionChange,
@@ -165,7 +156,6 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // --- TÉRMINOS Y CONDICIONES ---
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
@@ -187,12 +177,10 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // --- BOTÓN REGISTRAR (Lógica Remota) ---
                 Button(
                     onClick = {
                         usuarioViewModel.registrarUsuario { usuarioRegistrado ->
                             if (usuarioRegistrado != null) {
-                                // ÉXITO: Navegar al Login
                                 mainViewModel.navigateTo(AppRoute.Login.route)
                             }
                         }
@@ -202,7 +190,7 @@ fun RegistroScreen(usuarioViewModel: UsuarioViewModel, mainViewModel: MainViewMo
                     Text("Registrar")
                 }
 
-                Spacer(modifier = Modifier.height(16.dp)) // Espacio inferior
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     )
